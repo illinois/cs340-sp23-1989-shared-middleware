@@ -2,7 +2,7 @@
 
 ## MMG Requirements
 
-### MMG Registration Route: `PUT /addMMG` -> Middleware
+### MMG Registration Route: `PUT /addMMG`
 
 Each MMG must register with the middleware to enable participation in the course-wide mosaic generation.  To register, send `PUT /addMMG` to the shared middleware with the following three required form variables:
 - `name`, the name of your mosaic microservice generator
@@ -19,8 +19,9 @@ Additionally, the base image will be sent as the file `image`.
 
 (Refer to [Week #2](https://courses.grainger.illinois.edu/cs340/sp2023/project/week2/) for details on how these are used in your mosaic generation.)
 
+## Middleware Routes
 
-## Mosaic Route: Frontend -> `POST /makeMosaic`
+### Frontend -> `POST /makeMosaic`
 
 Initialize the mosaic creation process.
 
