@@ -7,7 +7,7 @@ let doSubmit = function () {
   data.append("image", f);
   data.append("tilesAcross", tilesAcross);
   data.append("renderedTileSize", renderedTileSize);
-  fetch("/makeMosaic/", {
+  fetch("/makeMosaic", {
     method: "POST",
     body: data,
   })
