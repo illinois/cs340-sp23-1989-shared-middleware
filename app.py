@@ -7,6 +7,7 @@ import base64
 import os
 import uuid
 from flask import Flask, jsonify, render_template, request
+import threading
 
 mg_ports = {}
 
@@ -29,6 +30,12 @@ def PUT_addMMG():
     print(f"Added {name}: {url} by {author}")
     return "Success :)", 200
 
+def make_request(url, tilesAcross, renderedTileSize, base_img_name, response):
+    req = requests.post(
+        f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
+        files={"image": open(base_img_name, "rb")}
+    )
+    response += req.json()
 
 @app.route("/makeMosaic", methods=["POST"])
 def POST_makeMosaic():
@@ -42,13 +49,15 @@ def POST_makeMosaic():
         base_img_name = f"temp-{uuid.uuid4()}.{filetype}"
         input_file.save(base_img_name)
 
+        threads = []
         for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
             print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
-            req = requests.post(
-                f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
-                files={"image": open(base_img_name, "rb")}
-            )
-            response += req.json()
+            t = threading.Thread(target=make_request, args=(mg_url, request.form["tilesAcross"], request.form["renderedTileSize"], base_img_name, response))
+            t.start()
+            threads.append(t)
+        
+        for t in threads:
+            t.join()
 
         os.system(f"rm {base_img_name}")
         print(
