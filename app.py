@@ -7,7 +7,8 @@ import base64
 import os
 import uuid
 from flask import Flask, jsonify, render_template, request
-import threading
+import asyncio
+import aiohttp
 
 mg_ports = {}
 
@@ -30,15 +31,23 @@ def PUT_addMMG():
     print(f"Added {name}: {url} by {author}")
     return "Success :)", 200
 
-def make_request(url, tilesAcross, renderedTileSize, base_img_name, response):
-    req = requests.post(
-        f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
-        files={"image": open(base_img_name, "rb")}
-    )
-    response += req.json()
+# def make_request(url, tilesAcross, renderedTileSize, base_img_name, response):
+#     req = requests.post(
+#         f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
+#         files={"image": open(base_img_name, "rb")}
+#     )
+#     response += req.json()
+
+async def make_request(url, tilesAcross, renderedTileSize, base_img_name):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
+            data={"image": open(base_img_name, "rb")}
+        ) as response:
+            return await response.json()
 
 @app.route("/makeMosaic", methods=["POST"])
-def POST_makeMosaic():
+async def POST_makeMosaic():
     """Route to generate mosaic"""
     response = []
     try:
@@ -52,12 +61,13 @@ def POST_makeMosaic():
         threads = []
         for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
             print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
-            t = threading.Thread(target=make_request, args=(mg_url, request.form["tilesAcross"], request.form["renderedTileSize"], base_img_name, response))
-            t.start()
-            threads.append(t)
+            thread = asyncio.create_task(make_request(mg_url, request.form["tilesAcross"], request.form["renderedTileSize"], base_img_name))
+            threads.append(thread)
         
-        for t in threads:
-            t.join()
+        images = await asyncio.gather(*threads)
+
+        for img in images:
+            response+=img
 
         os.system(f"rm {base_img_name}")
         print(
