@@ -9,6 +9,7 @@ import uuid
 from flask import Flask, jsonify, render_template, request
 import asyncio
 import aiohttp
+import subprocess
 
 mg_ports = {}
 
@@ -30,13 +31,6 @@ def PUT_addMMG():
     mg_ports[name] = url
     print(f"Added {name}: {url} by {author}")
     return "Success :)", 200
-
-# def make_request(url, tilesAcross, renderedTileSize, base_img_name, response):
-#     req = requests.post(
-#         f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
-#         files={"image": open(base_img_name, "rb")}
-#     )
-#     response += req.json()
 
 async def make_request(url, tilesAcross, renderedTileSize, base_img_name):
     async with aiohttp.ClientSession() as session:
