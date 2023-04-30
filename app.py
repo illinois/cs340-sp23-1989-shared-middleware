@@ -32,36 +32,41 @@ def PUT_addMMG():
 
 @app.route("/makeMosaic", methods=["POST"])
 def POST_makeMosaic():
-    """Route to generate mosaic"""
-    response = []
-    try:
-        start_time = time.time()
-        print("Reading in base file")
-        input_file = request.files["image"]
-        filetype = input_file.filename.split(".")[-1]
-        base_img_name = f"temp-{uuid.uuid4()}.{filetype}"
-        input_file.save(base_img_name)
+  """Route to generate mosaic"""
+  response = []
+  try:
+    start_time = time.time()
+    print("Reading in base file")
+    input_file = request.files["image"]
+    filetype = input_file.filename.split(".")[-1]
+    base_img_name = f"temp-{uuid.uuid4()}.{filetype}"
+    input_file.save(base_img_name)
 
-        for idx, (theme, (mg_url, author)) in enumerate(mg_ports.items(), 1):
-            req = requests.post(
-                f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
-                files={"image": open(base_img_name, "rb")}
-            )
-            print(f"Generating {theme} mosaic ({idx}/{len(mg_ports)})")
-            response += req.json()
-
-        os.system(f"rm {base_img_name}")
-        print(
-            f"Spent {time.time() - start_time} seconds to generate {len(mg_ports)} images"
+    for idx, (theme, (mg_url, author)) in enumerate(mg_ports.items(), 1):
+        req = requests.post(
+            f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
+            files={"image": open(base_img_name, "rb")}
         )
-    except:
-        mg_ports.pop(theme)
-        with open("static/favicon.png", "rb") as f:
-            buffer = f.read()
-            b64 = base64.b64encode(buffer)
-            response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+        print(f"Generating {theme} mosaic ({idx}/{len(mg_ports)})")
+        response += req.json()
 
-    return jsonify(response)
+    os.system(f"rm {base_img_name}")
+    print(
+        f"Spent {time.time() - start_time} seconds to generate {len(mg_ports)} images"
+    )
+  except requests.exceptions.ConnectionError:
+    mg_ports.pop(theme)
+    with open("static/favicon.png", "rb") as f:
+        buffer = f.read()
+        b64 = base64.b64encode(buffer)
+        response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+  except:
+    with open("static/favicon.png", "rb") as f:
+        buffer = f.read()
+        b64 = base64.b64encode(buffer)
+        response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+    
+  return jsonify(response)
 
 @app.route("/serverList", methods=["GET"])
 def GET_serverList():
