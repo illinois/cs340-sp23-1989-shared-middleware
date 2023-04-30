@@ -25,7 +25,7 @@ def PUT_addMMG():
     url = request.form["url"]
     author = request.form["author"]
 
-    mg_ports[name] = url
+    mg_ports[name] = (url, author)
     print(f"Added {name}: {url} by {author}")
     return "Success :)", 200
 
@@ -42,12 +42,12 @@ def POST_makeMosaic():
         base_img_name = f"temp-{uuid.uuid4()}.{filetype}"
         input_file.save(base_img_name)
 
-        for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
-            print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
+        for idx, (theme, (mg_url, author)) in enumerate(mg_ports.items(), 1):
             req = requests.post(
                 f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
                 files={"image": open(base_img_name, "rb")}
             )
+            print(f"Generating {theme} mosaic ({idx}/{len(mg_ports)})")
             response += req.json()
 
         os.system(f"rm {base_img_name}")
@@ -55,9 +55,16 @@ def POST_makeMosaic():
             f"Spent {time.time() - start_time} seconds to generate {len(mg_ports)} images"
         )
     except:
+        mg_ports.pop(theme)
         with open("static/favicon.png", "rb") as f:
             buffer = f.read()
             b64 = base64.b64encode(buffer)
             response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
 
     return jsonify(response)
+
+@app.route("/serverList", methods=["GET"])
+def GET_serverList():
+  """Route to get connected servers"""
+  return render_template("servers.html", data=mg_ports)
+    
