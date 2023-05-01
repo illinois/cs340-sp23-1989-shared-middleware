@@ -12,6 +12,16 @@ mg_ports = {}
 
 app = Flask(__name__)
 
+"""Default Values if not passing in valid values for tilesAcross and renderedTileSize"""
+TILES_ACORSS = 200
+RENDERED_TILE_SIZE = 16
+
+"""Default Max Values for tilesAcross and renderedTileSize, not sure what would be a good number, perhaps something related to memories?"""
+MAX_TILES_ACORSS = 1000
+MAX_RENDERED_TILE_SIZE = 64
+MAX_PIXEL = 64000
+
+
 @app.route("/", methods=["GET"])
 def GET_index():
     """Route for "/" (frontend)"""
@@ -43,9 +53,25 @@ def POST_makeMosaic():
         input_file.save(base_img_name)
 
         for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
-            print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
+            print(f"Generating {theme} mosaic ({idx}/{len(mg_ports)})")
+            tilesAcross = request.form["tilesAcross"]
+            renderedTileSize = request.form["renderedTileSize"]
+            """
+            Checking the input for tilesAcross and renderedTileSize, having conditions below will set the value to default:
+            1) Input is not exist
+            2) Negative Input
+            3) tilesAcross or renderedTileSize is too huge
+            4) Non-integer input
+            """
+            if tilesAcross == '' or tilesAcross == None or float(tilesAcross) <= 0 or float(tilesAcross) > MAX_TILES_ACORSS or float(tilesAcross) != int(float(tilesAcross)):
+                tilesAcross = TILES_ACORSS
+            if renderedTileSize == '' or renderedTileSize == None or float(renderedTileSize) <= 0 or float(renderedTileSize) > MAX_RENDERED_TILE_SIZE or float(renderedTileSize) != int(float(renderedTileSize)):
+                renderedTileSize = RENDERED_TILE_SIZE
+            if tilesAcross * renderedTileSize > MAX_PIXEL:
+                tilesAcross = TILES_ACORSS
+                renderedTileSize = RENDERED_TILE_SIZE
             req = requests.post(
-                f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
+                f'{mg_url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
                 files={"image": open(base_img_name, "rb")}
             )
             response += req.json()
@@ -59,5 +85,14 @@ def POST_makeMosaic():
             buffer = f.read()
             b64 = base64.b64encode(buffer)
             response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+    
+    finally:
+        """I do not want to save the input files, remove the base image file after use"""
+        if os.path.exists(base_img_name):
+            os.remove(base_img_name)
 
     return jsonify(response)
+
+
+if __name__ == "__main__":
+    app.run(port=34000)
