@@ -9,7 +9,6 @@ import uuid
 from flask import Flask, jsonify, render_template, request
 import asyncio
 import aiohttp
-import subprocess
 
 mg_ports = {}
 
@@ -52,11 +51,19 @@ async def POST_makeMosaic():
         base_img_name = f"temp-{uuid.uuid4()}.{filetype}"
         input_file.save(base_img_name)
 
+
         threads = []
         for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
-            print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
-            thread = asyncio.create_task(make_request(mg_url, request.form["tilesAcross"], request.form["renderedTileSize"], base_img_name))
-            threads.append(thread)
+            try:
+                print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
+                thread = asyncio.create_task(make_request(mg_url, request.form["tilesAcross"], request.form["renderedTileSize"], base_img_name))
+                threads.append(thread)
+            except:
+                with open("static/favicon.png", "rb") as f:
+                    buffer = f.read()
+                    b64 = base64.b64encode(buffer)
+                    response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+
         
         images = await asyncio.gather(*threads)
 
@@ -72,5 +79,7 @@ async def POST_makeMosaic():
             buffer = f.read()
             b64 = base64.b64encode(buffer)
             response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+            
+            os.system(f"rm {base_img_name}")
 
     return jsonify(response)
