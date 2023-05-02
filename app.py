@@ -32,7 +32,7 @@ def PUT_addMMG():
     for requiredField in ["name", "url", "author", "tileImageCount"]:
         if requiredField not in request.form:
             error = f"Required field {requiredField} is not present in /addMMG request."
-            print(f"REJECTED /addMMG: {error}")
+            print(f"❌ REJECTED /addMMG: {error}")
             return jsonify({"error": error})
 
     # Add the MMG:
@@ -50,13 +50,22 @@ def PUT_addMMG():
         "errorStatus": None,
         "tiles": tileImageCount,
     }
-    print(f"Added MMG {name}: {url} by {author}")
+    print(f"✔️ Added MMG {name}: {url} by {author}")
     return "Success :)", 200
 
 
 @app.route("/registerReducer", methods=["PUT"])
 def PUT_registerReducer():
     """Registers a reducer"""
+
+    # Check for required fields:
+    for requiredField in ["url", "author"]:
+        if requiredField not in request.form:
+            error = f"Required field {requiredField} is not present in /registerReducer request."
+            print(f"❌ REJECTED /registerReducer: {error}")
+            return jsonify({"error": error})
+
+
     url = request.form["url"]
     author = request.form["author"]
     id = secrets.token_hex(20)
@@ -66,7 +75,7 @@ def PUT_registerReducer():
         "url": url,
         "author": author,
     }
-    print(f"Added reducer: {url} by {author}")
+    print(f"✔️ Added reducer: {url} by {author}")
     return "Success :)", 200
 
 
@@ -84,6 +93,7 @@ async def POST_makeMosaic():
             baseImage = baseImage,
             tilesAcross = request.form["tilesAcross"],
             renderedTileSize = request.form["renderedTileSize"],
+            fileFormat = request.form["fileFormat"],
             socketio = socketio,
         )
         for id in mmg_servers:

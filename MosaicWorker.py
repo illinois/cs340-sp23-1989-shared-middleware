@@ -4,10 +4,11 @@ import random
 import base64
 
 class MosaicWorker:
-  def __init__(self, baseImage, tilesAcross, renderedTileSize, socketio):
+  def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio):
     self.baseImage = baseImage
     self.tilesAcross = tilesAcross
     self.renderedTileSize = renderedTileSize
+    self.fileFormat = fileFormat
     self.socketio = socketio
 
     self.mmgsAvailable = []
@@ -72,7 +73,7 @@ class MosaicWorker:
     print(f'[MosaicWorker]:   url: {url}')
 
     req = requests.post(
-      f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}',
+      f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
       files = {
         "baseImage": self.baseImage,
         "mosaic1": mosaic1["mosaicImage"],
@@ -98,7 +99,7 @@ class MosaicWorker:
 
     try:
       req = requests.post(
-          f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}",
+          f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
           files={"image": self.baseImage}
       )
     except requests.exceptions.ConnectionError as e:

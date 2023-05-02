@@ -7,10 +7,13 @@ let doSubmit = function () {
   let f = e.files[0];
   let tilesAcross = document.getElementById("tilesAcross").value;
   let renderedTileSize = document.getElementById("renderedTileSize").value;
+  let fileFormat = document.getElementById("fileFormat").value;
+
   var data = new FormData();
   data.append("image", f);
   data.append("tilesAcross", tilesAcross);
   data.append("renderedTileSize", renderedTileSize);
+  data.append("fileFormat", fileFormat);
 
   /* SocketIO */
   if (!socket) {
