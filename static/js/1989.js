@@ -1,9 +1,15 @@
-let doSubmit = function () {
+let doSubmit = async function () {
   let e = document.getElementById("image");
   let f = e.files[0];
   let tilesAcross = document.getElementById("tilesAcross").value;
   let renderedTileSize = document.getElementById("renderedTileSize").value;
   var data = new FormData();
+  //set up jsConfetti
+  const jsConfetti = new JSConfetti()
+  //count how many mmgs are connected
+  const response = await fetch('/api/serverCount');
+  const countData = await response.json();
+  const mmgCount = countData.count;
   data.append("image", f);
   data.append("tilesAcross", tilesAcross);
   data.append("renderedTileSize", renderedTileSize);
@@ -25,6 +31,27 @@ let doSubmit = function () {
   })
   .then((response) => response.json())
   .then((json) => {
+    const imageCount = json.length;
+    console.log(imageCount)
+    console.log(mmgCount)
+    const diff = mmgCount- imageCount
+    //f the number of connected servers is equal to the number of generated mosaics, confetti will continue to display for a second 🎉
+    if (diff == 0) {
+      console.log('no difference')
+      intervalId = setInterval(() => {
+        jsConfetti.addConfetti();
+      }, 200);
+      setTimeout(() => {
+        clearInterval(intervalId);
+      }, 1000)
+    } else {
+        //if any of the MMGs failed, it will show the number of failures with a sad face x2 😔
+      setTimeout(() => {
+        jsConfetti.addConfetti();
+        jsConfetti.addConfetti({emojis:['😔'],confettiNumber: diff});
+      }, 500);
+    }
+
     let html = "";
 
     html += `<div class="row">`;
