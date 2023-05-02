@@ -42,7 +42,7 @@ def PUT_registerReducer():
     author = request.form["author"]
     id = secrets.token_hex(20)
 
-    reducers[author] = {
+    reducers[id] = {
         "id": id,
         "url": url,
         "author": author,
