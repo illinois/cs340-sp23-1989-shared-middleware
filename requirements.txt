@@ -2,4 +2,3 @@ flask
 flask[async]
 requests
 python-dotenv
-aiohttp

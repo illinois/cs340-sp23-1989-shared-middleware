@@ -32,12 +32,11 @@ def PUT_addMMG():
     return "Success :)", 200
 
 async def make_request(url, tilesAcross, renderedTileSize, image_data):
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
-            data={"image": image_data}
-        ) as response:
-            return await response.json()
+    req = requests.post(
+        f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
+        files={"image": image_data}
+    )
+    return req.json()
 
 @app.route("/makeMosaic", methods=["POST"])
 async def POST_makeMosaic():
