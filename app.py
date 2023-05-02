@@ -5,9 +5,10 @@ import requests
 import time
 from flask import Flask, jsonify, render_template, request
 import asyncio
-import aiohttp
+import secrets
 
 mmg_servers = {}
+reducers = {}
 
 app = Flask(__name__)
 
@@ -23,13 +24,33 @@ def PUT_addMMG():
     name = request.form["name"]
     url = request.form["url"]
     author = request.form["author"]
+    id = secrets.token_hex(20)
 
-    mmg_servers[name] = {
+    mmg_servers[id] = {
+        "id": id,
+        "name": name,
         "url": url,
         "author": author,
     }
     print(f"Added {name}: {url} by {author}")
     return "Success :)", 200
+
+@app.route("/registerReducer", methods=["PUT"])
+def PUT_registerReducer():
+    """Registers a reducer"""
+    url = request.form["url"]
+    author = request.form["author"]
+    id = secrets.token_hex(20)
+
+    reducers[author] = {
+        "id": id,
+        "url": url,
+        "author": author,
+    }
+    print(f"Added reducer: {url} by {author}")
+    return "Success :)", 200
+
+
 
 async def make_request(url, tilesAcross, renderedTileSize, image_data):
     req = requests.post(
@@ -49,11 +70,13 @@ async def POST_makeMosaic():
         image_data = input_file.read()
 
         threads = []
-        for idx, (theme, server_info) in enumerate(mmg_servers.items(), 1):
+        for idx, (id, server_info) in enumerate(mmg_servers.items(), 1):
             try:
-                print(f"Generating {theme} mosiac ({idx}/{len(mmg_servers)})")
-                mg_url = server_info["url"]
-                thread = asyncio.create_task(make_request(mg_url, request.form["tilesAcross"], request.form["renderedTileSize"], image_data))
+                url = server_info["url"]
+                name = server_info["name"]
+
+                print(f"Generating {name} mosaic ({idx}/{len(mmg_servers)})")
+                thread = asyncio.create_task(make_request(url, request.form["tilesAcross"], request.form["renderedTileSize"], image_data))
                 threads.append(thread)
             except Exception as e:
                 print(e)
