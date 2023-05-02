@@ -32,20 +32,24 @@ def PUT_addMMG():
 
 @app.route("/makeMosaic", methods=["POST"])
 def POST_makeMosaic():
-  """Route to generate mosaic"""
-  response = []
-  try:
-    start_time = time.time()
-    print("Reading in base file")
-    input_file = request.files["image"]
-    filetype = input_file.filename.split(".")[-1]
-    base_img_name = f"temp-{uuid.uuid4()}.{filetype}"
-    input_file.save(base_img_name)
+    """Route to generate mosaic"""
+    response = []
+    try:
+        start_time = time.time()
+        print("Reading in base file")
+        input_file = request.files["image"]
+        image_data = input_file.read()
 
-    for idx, (theme, (mg_url, author)) in enumerate(mg_ports.items(), 1):
-        req = requests.post(
-            f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
-            files={"image": open(base_img_name, "rb")}
+        for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
+            print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
+            req = requests.post(
+                f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
+                files={"image": image_data}
+            )
+            response += req.json()
+
+        print(
+            f"Spent {time.time() - start_time} seconds to generate {len(mg_ports)} images"
         )
         print(f"Generating {theme} mosaic ({idx}/{len(mg_ports)})")
         response += req.json()
