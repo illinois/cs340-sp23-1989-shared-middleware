@@ -6,11 +6,14 @@ import time
 from flask import Flask, jsonify, render_template, request
 import asyncio
 import secrets
+from flask_socketio import SocketIO
 
 mmg_servers = {}
 reducers = {}
 
 app = Flask(__name__)
+socketio = SocketIO(app)
+
 
 @app.route("/", methods=["GET"])
 def GET_index():
@@ -52,22 +55,31 @@ def PUT_registerReducer():
     return "Success :)", 200
 
 
+completed = 0
 
 async def make_request(url, tilesAcross, renderedTileSize, image_data):
+    global completed
     req = requests.post(
         f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
         files={"image": image_data}
     )
+
+    completed = completed + 1
+    socketio.emit("progress update", str(completed / len(mmg_servers)))
+
     return req.json()
 
 @app.route("/makeMosaic", methods=["POST"])
 async def POST_makeMosaic():
     """Route to generate mosaic"""
-    response = []
+    global completed
+    completed = 0
+
     try:
         start_time = time.time()
         print("Reading in base file")
         input_file = request.files["image"]
+
         image_data = input_file.read()
 
         threads = []
@@ -81,7 +93,7 @@ async def POST_makeMosaic():
                 threads.append(thread)
             except Exception as e:
                 print(e)
-        
+
         images = await asyncio.gather(*threads)
         for img in images:
             response += img
