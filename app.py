@@ -10,7 +10,7 @@ from flask import Flask, jsonify, render_template, request
 import asyncio
 import aiohttp
 
-mg_ports = {}
+mmg_servers = {}
 
 app = Flask(__name__)
 
@@ -27,15 +27,18 @@ def PUT_addMMG():
     url = request.form["url"]
     author = request.form["author"]
 
-    mg_ports[name] = url
+    mmg_servers[name] = {
+        "url": url,
+        "author": author,
+    }
     print(f"Added {name}: {url} by {author}")
     return "Success :)", 200
 
-async def make_request(url, tilesAcross, renderedTileSize, base_img_name):
+async def make_request(url, tilesAcross, renderedTileSize, image_data):
     async with aiohttp.ClientSession() as session:
         async with session.post(
             f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
-            data={"image": open(base_img_name, "rb")}
+            data={"image": image_data}
         ) as response:
             return await response.json()
 
@@ -47,39 +50,41 @@ async def POST_makeMosaic():
         start_time = time.time()
         print("Reading in base file")
         input_file = request.files["image"]
-        filetype = input_file.filename.split(".")[-1]
-        base_img_name = f"temp-{uuid.uuid4()}.{filetype}"
-        input_file.save(base_img_name)
-
+        image_data = input_file.read()
 
         threads = []
-        for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
+        for idx, (theme, server_info) in enumerate(mmg_servers.items(), 1):
             try:
-                print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
-                thread = asyncio.create_task(make_request(mg_url, request.form["tilesAcross"], request.form["renderedTileSize"], base_img_name))
+                print(f"Generating {theme} mosiac ({idx}/{len(mmg_servers)})")
+                mg_url = server_info["url"]
+                thread = asyncio.create_task(make_request(mg_url, request.form["tilesAcross"], request.form["renderedTileSize"], image_data))
                 threads.append(thread)
-            except:
-                with open("static/favicon.png", "rb") as f:
-                    buffer = f.read()
-                    b64 = base64.b64encode(buffer)
-                    response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
-
+            except Exception as e:
+                print(e)
         
         images = await asyncio.gather(*threads)
-
         for img in images:
-            response+=img
+            response += img
 
-        os.system(f"rm {base_img_name}")
         print(
-            f"Spent {time.time() - start_time} seconds to generate {len(mg_ports)} images"
+            f"Spent {time.time() - start_time} seconds to generate {len(mmg_servers)} images"
         )
-    except:
-        with open("static/favicon.png", "rb") as f:
-            buffer = f.read()
-            b64 = base64.b64encode(buffer)
-            response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
-            
-            os.system(f"rm {base_img_name}")
 
+    except KeyError as e:
+        print(e)
+        response.append({"error": "Please upload an image file."})
+    except requests.exceptions.RequestException as e:
+        print(e)
+        response.append({"error": "Failed to connect to remote server."})
+    except requests.exceptions.ConnectionError as e:
+        print(e)
+        mg_ports.pop(theme)
+
+    
     return jsonify(response)
+
+@app.route("/serverList", methods=["GET"])
+def GET_serverList():
+  """Route to get connected servers"""
+  return render_template("servers.html", data=mg_ports)
+    
