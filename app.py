@@ -38,19 +38,16 @@ def POST_makeMosaic():
         start_time = time.time()
         print("Reading in base file")
         input_file = request.files["image"]
-        filetype = input_file.filename.split(".")[-1]
-        base_img_name = f"temp-{uuid.uuid4()}.{filetype}"
-        input_file.save(base_img_name)
+        image_data = input_file.read()
 
         for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
             print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
             req = requests.post(
                 f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
-                files={"image": open(base_img_name, "rb")}
+                files={"image": image_data}
             )
             response += req.json()
 
-        os.system(f"rm {base_img_name}")
         print(
             f"Spent {time.time() - start_time} seconds to generate {len(mg_ports)} images"
         )
