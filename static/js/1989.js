@@ -7,6 +7,8 @@ let doSubmit = function () {
   data.append("image", f);
   data.append("tilesAcross", tilesAcross);
   data.append("renderedTileSize", renderedTileSize);
+
+  /* SocketIO */
   var socket = io();
   socket.on('progress update', function (progress) {
     console.log("progress" + progress);
@@ -16,6 +18,7 @@ let doSubmit = function () {
     progbar.setAttribute('aria-valuenow', Math.round(Number(progress * 100)));
     progbar.textContent = String(Math.round(Number(progress * 100))) + '%';
   });
+
   fetch("/makeMosaic", {
     method: "POST",
     body: data,
