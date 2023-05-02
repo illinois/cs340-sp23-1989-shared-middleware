@@ -35,19 +35,21 @@ let doSubmit = async function () {
     console.log(imageCount)
     console.log(mmgCount)
     const diff = mmgCount- imageCount
-    //f the number of connected servers is equal to the number of generated mosaics, confetti will continue to display for a second 🎉
+    //if the number of connected servers is equal to the number of generated mosaics, confetti will continue to display for a second 🎉
     if (diff == 0) {
       console.log('no difference')
-      intervalId = setInterval(() => {
-        jsConfetti.addConfetti();
+      setTimeout(() => {
+        intervalId = setInterval(() => {
+          jsConfetti.addConfetti();
+        }, 100);
       }, 200);
       setTimeout(() => {
         clearInterval(intervalId);
-      }, 1000)
+      }, 1500)
     } else {
         //if any of the MMGs failed, it will show the number of failures with a sad face x2 😔
       setTimeout(() => {
-        jsConfetti.addConfetti();
+        jsConfetti.addConfetti({confettiNumber: 400});
         jsConfetti.addConfetti({emojis:['😔'],confettiNumber: diff});
       }, 500);
     }
