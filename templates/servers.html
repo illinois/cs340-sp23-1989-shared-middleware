@@ -70,8 +70,8 @@
             {% for k in data.keys() %}
                 <tr class="table-success">
                     <td>{{ k }}</td>
-                    <td>{{ data[k][0] }}</td>
-                    <td>{{ data[k][1] }}</td>
+                    <td>{{ data[k]["url"] }}</td>
+                    <td>{{ data[k]["author"] }}</td>
                 </tr>
             {% endfor %}
           </tbody>

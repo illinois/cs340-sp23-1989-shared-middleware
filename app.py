@@ -3,9 +3,6 @@ load_dotenv()
 
 import requests
 import time
-import base64
-import os
-import uuid
 from flask import Flask, jsonify, render_template, request
 import asyncio
 import aiohttp
@@ -86,5 +83,5 @@ async def POST_makeMosaic():
 @app.route("/serverList", methods=["GET"])
 def GET_serverList():
   """Route to get connected servers"""
-  return render_template("servers.html", data=mg_ports)
+  return render_template("servers.html", data=mmg_servers)
     
