@@ -30,7 +30,7 @@ class MosaicWorker:
     self.reducersAvailable.append(reducer)
 
 
-  def processRenderedMosaic(self, mosaicImage, description):
+  def processRenderedMosaic(self, mosaicImage, description, tiles):
     """Stores a rendered mosaic, queueing up reduction or further reduction if possible."""
     print(f"[MosaicWorker]: --> Storing mosaic result as #{self.mosaicNextID}")
     print(f"[MosaicWorker]:     Bytes: {len(mosaicImage)}")
@@ -38,7 +38,8 @@ class MosaicWorker:
     mosaicInfo = {
       "image": mosaicImage,
       "id": self.mosaicNextID,
-      "description": description
+      "description": description,
+      "tiles": tiles,
     }
     self.allRenderedMosaics.append(mosaicInfo)
     self.socketio.emit("mosaic", mosaicInfo)
@@ -47,6 +48,7 @@ class MosaicWorker:
     self.reducerQueue.append({
       "mosaicImage": mosaicImage,
       "id": self.mosaicNextID,
+      "tiles": tiles,
     })
     self.mosaicNextID = self.mosaicNextID + 1
     self.socketio.emit("progress update", str(len(self.allRenderedMosaics) / self.expectedMosaics))
@@ -79,7 +81,11 @@ class MosaicWorker:
     )
 
     mosaicImage = req.content
-    self.processRenderedMosaic(mosaicImage, f'Reduction of #{mosaic1["id"]} and #{mosaic2["id"]}')
+    self.processRenderedMosaic(
+      mosaicImage,
+      f'Reduction of #{mosaic1["id"]} and #{mosaic2["id"]}',
+      mosaic1["tiles"] + mosaic2["tiles"]
+    )
 
     self.reducerCompleted = self.reducerCompleted + 1
 
@@ -100,7 +106,7 @@ class MosaicWorker:
       return
 
     mosaicImage = req.content
-    self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}")
+    self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"])
 
     self.mmgCompleted = self.mmgCompleted + 1
     #socketio.emit("progress update", str(completed / len(mmg_servers)))

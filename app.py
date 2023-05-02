@@ -29,7 +29,7 @@ def PUT_addMMG():
     """Add a mosaic microservice generator"""
 
     # Check for required fields:
-    for requiredField in ["name", "url", "author", "tileImagesUsed"]:
+    for requiredField in ["name", "url", "author", "tileImageCount"]:
         if requiredField not in request.form:
             error = f"Required field {requiredField} is not present in /addMMG request."
             print(f"REJECTED /addMMG: {error}")
@@ -39,7 +39,7 @@ def PUT_addMMG():
     name = request.form["name"]
     url = request.form["url"]
     author = request.form["author"]
-    tileImagesUsed = request.form["tileImagesUsed"]
+    tileImageCount = int(request.form["tileImageCount"])
     id = secrets.token_hex(20)
 
     mmg_servers[id] = {
@@ -48,6 +48,7 @@ def PUT_addMMG():
         "url": url,
         "author": author,
         "errorStatus": None,
+        "tiles": tileImageCount,
     }
     print(f"Added MMG {name}: {url} by {author}")
     return "Success :)", 200

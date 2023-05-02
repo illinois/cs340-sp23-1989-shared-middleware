@@ -27,10 +27,10 @@ let doSubmit = function () {
       var imageUrl = (window.URL || window.webkitURL).createObjectURL( blob );
   
       html = "";
-      html += `<div class="col-2">`;
+      html += `<div class="col-2 mb-2">`;
       html += `<img src="${imageUrl}" class="img-fluid">`
       html += `<div style="font-size: 12px">`;
-      html += `<b>Mosaic #${mosaicInfo.id}</b><br>`;
+      html += `<b>Mosaic #${mosaicInfo.id}</b> (${mosaicInfo.tiles} tiles)<br>`;
       html += `<i>${mosaicInfo.description}<i>`;
       html += `</div>`;
       html += `</div>`;
