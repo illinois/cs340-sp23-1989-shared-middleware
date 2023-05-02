@@ -25,7 +25,7 @@ def PUT_addMMG():
     url = request.form["url"]
     author = request.form["author"]
 
-    mg_ports[name] = url
+    mg_ports[name] = (url, author)
     print(f"Added {name}: {url} by {author}")
     return "Success :)", 200
 
@@ -38,23 +38,20 @@ def POST_makeMosaic():
         start_time = time.time()
         print("Reading in base file")
         input_file = request.files["image"]
-        filetype = input_file.filename.split(".")[-1]
-        base_img_name = f"temp-{uuid.uuid4()}.{filetype}"
-        input_file.save(base_img_name)
+        image_data = input_file.read()
 
         for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
             print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
             req = requests.post(
                 f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
-                files={"image": open(base_img_name, "rb")}
+                files={"image": image_data}
             )
             response += req.json()
 
-        os.system(f"rm {base_img_name}")
         print(
             f"Spent {time.time() - start_time} seconds to generate {len(mg_ports)} images"
         )
-    
+
     except KeyError as e:
         response.append({"error": "Please upload an image file."})
     except requests.exceptions.RequestException as e:
@@ -64,5 +61,24 @@ def POST_makeMosaic():
             buffer = f.read()
             b64 = base64.b64encode(buffer)
             response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+      print(f"Generating {theme} mosaic ({idx}/{len(mg_ports)})")
+      response += req.json()
+  except requests.exceptions.ConnectionError:
+    mg_ports.pop(theme)
+    with open("static/favicon.png", "rb") as f:
+        buffer = f.read()
+        b64 = base64.b64encode(buffer)
+        response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+  except:
+    with open("static/favicon.png", "rb") as f:
+        buffer = f.read()
+        b64 = base64.b64encode(buffer)
+        response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+    
+  return jsonify(response)
 
-    return jsonify(response)
+@app.route("/serverList", methods=["GET"])
+def GET_serverList():
+  """Route to get connected servers"""
+  return render_template("servers.html", data=mg_ports)
+    
