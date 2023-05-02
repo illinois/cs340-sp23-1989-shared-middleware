@@ -35,6 +35,7 @@ def PUT_addMMG():
     print(f"Added {name}: {url} by {author}")
     return "Success :)", 200
 
+
 @app.route("/registerReducer", methods=["PUT"])
 def PUT_registerReducer():
     """Registers a reducer"""
