@@ -51,13 +51,18 @@ def POST_makeMosaic():
         print(
             f"Spent {time.time() - start_time} seconds to generate {len(mg_ports)} images"
         )
-        print(f"Generating {theme} mosaic ({idx}/{len(mg_ports)})")
-        response += req.json()
 
-    os.system(f"rm {base_img_name}")
-    print(
-        f"Spent {time.time() - start_time} seconds to generate {len(mg_ports)} images"
-    )
+    except KeyError as e:
+        response.append({"error": "Please upload an image file."})
+    except requests.exceptions.RequestException as e:
+        response.append({"error": "Failed to connect to remote server."})
+    except Exception as e:
+        with open("static/favicon.png", "rb") as f:
+            buffer = f.read()
+            b64 = base64.b64encode(buffer)
+            response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+      print(f"Generating {theme} mosaic ({idx}/{len(mg_ports)})")
+      response += req.json()
   except requests.exceptions.ConnectionError:
     mg_ports.pop(theme)
     with open("static/favicon.png", "rb") as f:
