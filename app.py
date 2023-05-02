@@ -40,7 +40,9 @@ def POST_makeMosaic():
         input_file = request.files["image"]
         image_data = input_file.read()
 
-        for idx, (theme, mg_url) in enumerate(mg_ports.items(), 1):
+        for idx, (theme, server_info) in enumerate(mg_ports.items(), 1):
+            mg_url, author = server_info
+            
             print(f"Generating {theme} mosiac ({idx}/{len(mg_ports)})")
             req = requests.post(
                 f'{mg_url}?tilesAcross={request.form["tilesAcross"]}&renderedTileSize={request.form["renderedTileSize"]}',
@@ -56,26 +58,19 @@ def POST_makeMosaic():
         response.append({"error": "Please upload an image file."})
     except requests.exceptions.RequestException as e:
         response.append({"error": "Failed to connect to remote server."})
-    except Exception as e:
+    except requests.exceptions.ConnectionError as e:
+        mg_ports.pop(theme)
         with open("static/favicon.png", "rb") as f:
             buffer = f.read()
             b64 = base64.b64encode(buffer)
             response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
-      print(f"Generating {theme} mosaic ({idx}/{len(mg_ports)})")
-      response += req.json()
-  except requests.exceptions.ConnectionError:
-    mg_ports.pop(theme)
-    with open("static/favicon.png", "rb") as f:
-        buffer = f.read()
-        b64 = base64.b64encode(buffer)
-        response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
-  except:
-    with open("static/favicon.png", "rb") as f:
-        buffer = f.read()
-        b64 = base64.b64encode(buffer)
-        response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
+    except:
+        with open("static/favicon.png", "rb") as f:
+            buffer = f.read()
+            b64 = base64.b64encode(buffer)
+            response.append({"image": "data:image/png;base64," + b64.decode("utf-8")})
     
-  return jsonify(response)
+    return jsonify(response)
 
 @app.route("/serverList", methods=["GET"])
 def GET_serverList():
