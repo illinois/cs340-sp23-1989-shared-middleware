@@ -75,6 +75,7 @@ async def POST_makeMosaic():
     global completed
     completed = 0
 
+    response = []
     try:
         start_time = time.time()
         print("Reading in base file")
