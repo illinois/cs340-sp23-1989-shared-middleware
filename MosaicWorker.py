@@ -18,8 +18,6 @@ class MosaicWorker:
     self.mmgTasks = []
     self.reducerTasks = []
 
-    self.allRenderedMosaics = []
-
     self.mmgCompleted = 0
     self.reducerCompleted = 0
     self.mosaicNextID = 1
@@ -42,7 +40,6 @@ class MosaicWorker:
       "description": description,
       "tiles": tiles,
     }
-    self.allRenderedMosaics.append(mosaicInfo)
     self.socketio.emit("mosaic", mosaicInfo)
 
 
@@ -51,8 +48,8 @@ class MosaicWorker:
       "id": self.mosaicNextID,
       "tiles": tiles,
     })
+    self.socketio.emit("progress update", str(self.mosaicNextID / self.expectedMosaics))
     self.mosaicNextID = self.mosaicNextID + 1
-    self.socketio.emit("progress update", str(len(self.allRenderedMosaics) / self.expectedMosaics))
 
     if len(self.reducerQueue) >= 2:
        mosaic1 = self.reducerQueue.pop()
@@ -129,10 +126,10 @@ class MosaicWorker:
     # After all MMGs and reducers, there should be one mosaic that remains to be reduced that cannot
     # be reduced with anything else.  This is the final result:
 
-    if len(self.allRenderedMosaics) > 0:
-      for d in self.allRenderedMosaics:
-        d["image"] = "data:image/png;base64," + base64.b64encode(d["image"]).decode("utf-8")
-      return self.allRenderedMosaics
+    # if len(self.allRenderedMosaics) > 0:
+    #   for d in self.allRenderedMosaics:
+    #     d["image"] = "data:image/png;base64," + base64.b64encode(d["image"]).decode("utf-8")
+    #   return self.allRenderedMosaics
     
     if len(self.reducerQueue) == 1:
       mosaicImage_buffer = self.reducerQueue[0]["mosaicImage"]
