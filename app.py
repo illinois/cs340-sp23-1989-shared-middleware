@@ -1,4 +1,7 @@
+import base64
 from dotenv import load_dotenv
+
+from MosaicWorker import MosaicWorker
 load_dotenv()
 
 import requests
@@ -24,9 +27,19 @@ def GET_index():
 @app.route("/addMMG", methods=["PUT"])
 def PUT_addMMG():
     """Add a mosaic microservice generator"""
+
+    # Check for required fields:
+    for requiredField in ["name", "url", "author", "tileImageCount"]:
+        if requiredField not in request.form:
+            error = f"Required field {requiredField} is not present in /addMMG request."
+            print(f"❌ REJECTED /addMMG: {error}")
+            return jsonify({"error": error})
+
+    # Add the MMG:
     name = request.form["name"]
     url = request.form["url"]
     author = request.form["author"]
+    tileImageCount = int(request.form["tileImageCount"])
     id = secrets.token_hex(20)
 
     mmg_servers[id] = {
@@ -34,14 +47,25 @@ def PUT_addMMG():
         "name": name,
         "url": url,
         "author": author,
+        "errorStatus": None,
+        "tiles": tileImageCount,
     }
-    print(f"Added {name}: {url} by {author}")
+    print(f"✔️ Added MMG {name}: {url} by {author}")
     return "Success :)", 200
 
 
 @app.route("/registerReducer", methods=["PUT"])
 def PUT_registerReducer():
     """Registers a reducer"""
+
+    # Check for required fields:
+    for requiredField in ["url", "author"]:
+        if requiredField not in request.form:
+            error = f"Required field {requiredField} is not present in /registerReducer request."
+            print(f"❌ REJECTED /registerReducer: {error}")
+            return jsonify({"error": error})
+
+
     url = request.form["url"]
     author = request.form["author"]
     id = secrets.token_hex(20)
@@ -51,23 +75,9 @@ def PUT_registerReducer():
         "url": url,
         "author": author,
     }
-    print(f"Added reducer: {url} by {author}")
+    print(f"✔️ Added reducer: {url} by {author}")
     return "Success :)", 200
 
-
-completed = 0
-
-async def make_request(url, tilesAcross, renderedTileSize, image_data):
-    global completed
-    req = requests.post(
-        f'{url}?tilesAcross={tilesAcross}&renderedTileSize={renderedTileSize}',
-        files={"image": image_data}
-    )
-
-    completed = completed + 1
-    socketio.emit("progress update", str(completed / len(mmg_servers)))
-
-    return req.json()
 
 @app.route("/makeMosaic", methods=["POST"])
 async def POST_makeMosaic():
@@ -75,46 +85,35 @@ async def POST_makeMosaic():
     global completed
     completed = 0
 
-    response = []
     try:
-        start_time = time.time()
-        print("Reading in base file")
         input_file = request.files["image"]
+        baseImage = input_file.read()
 
-        image_data = input_file.read()
-
-        threads = []
-        for idx, (id, server_info) in enumerate(mmg_servers.items(), 1):
-            try:
-                url = server_info["url"]
-                name = server_info["name"]
-
-                print(f"Generating {name} mosaic ({idx}/{len(mmg_servers)})")
-                thread = asyncio.create_task(make_request(url, request.form["tilesAcross"], request.form["renderedTileSize"], image_data))
-                threads.append(thread)
-            except Exception as e:
-                print(e)
-
-        images = await asyncio.gather(*threads)
-        for img in images:
-            response += img
-
-        print(
-            f"Spent {time.time() - start_time} seconds to generate {len(mmg_servers)} images"
+        worker = MosaicWorker(
+            baseImage = baseImage,
+            tilesAcross = request.form["tilesAcross"],
+            renderedTileSize = request.form["renderedTileSize"],
+            fileFormat = request.form["fileFormat"],
+            socketio = socketio,
         )
+        for id in mmg_servers:
+            worker.addMMG( mmg_servers[id] )
+        
+        for id in reducers:
+            worker.addReducer( reducers[id] )
+
+        result = await worker.createMosaic()
+        return jsonify(result)
 
     except KeyError as e:
         print(e)
-        response.append({"error": "Please upload an image file."})
-    except requests.exceptions.RequestException as e:
-        print(e)
-        response.append({"error": "Failed to connect to remote server."})
-    except requests.exceptions.ConnectionError as e:
-        print(e)
-        mg_ports.pop(theme)
-
+        return jsonify({"error": "Please upload an image file."}), 400
     
-    return jsonify(response)
+    except Exception as e:
+        import traceback
+        traceback.print_exception(e)
+        return jsonify({"error": str(e)}), 400
+
 
 @app.route("/serverList", methods=["GET"])
 def GET_serverList():

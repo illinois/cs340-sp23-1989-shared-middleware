@@ -43,13 +43,20 @@
         <label for="image">Base Image:</label>
         <input type="file" class="form-control" id="image" name="image" />
         <div class="row my-3">
-          <div class="col-6">
+          <div class="col-4">
             <label for="tilesAcross">Tiles Across:</label>
             <input type="number" class="form-control" id="tilesAcross" name="tilesAcross" value="50" />
           </div>
-          <div class="col-6">
+          <div class="col-4">
             <label for="renderedTileSize">Rendered Tile Size:</label>
             <input type="number" class="form-control" id="renderedTileSize" name="renderedTileSize" value="20" />
+          </div>
+          <div class="col-4">
+            <label for="fileFormat">File Format:</label>
+            <select class="form-control" name="fileFormat" id="fileFormat">
+              <option value="PNG" selected>PNG</option>
+              <option value="JPEG">JPEG</option>
+            </select>
           </div>
         </div>
       </div>
@@ -60,7 +67,9 @@
       <div class="progress-bar progress-bar-striped progress-bar-animated" id="progbar" role="progressbar"
         style="width: 0%;" aria-valuenow="0" aria-valuemin="100" aria-valuemax="100">0%</div>
     </div>
-    <div id="mosaics" class="mt-5"></div>
+    <div id="output" class="mt-5">
+      <div id="mosaics" class="row"></div>
+    </div>
   </main>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
   <script type="text/javascript" src="/static/js/1989.js"></script>
