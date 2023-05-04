@@ -95,7 +95,6 @@ async def POST_makeMosaic():
             renderedTileSize = request.form["renderedTileSize"],
             fileFormat = request.form["fileFormat"],
             socketio = socketio,
-            mmgCount = len(mmg_servers),
         )
         for id in mmg_servers:
             worker.addMMG( mmg_servers[id] )
