@@ -37,6 +37,7 @@ let doSubmit = function () {
   let tilesAcross = document.getElementById("tilesAcross").value;
   let renderedTileSize = document.getElementById("renderedTileSize").value;
   let fileFormat = document.getElementById("fileFormat").value;
+  const jsConfetti = new JSConfetti()
 
   var data = new FormData();
   data.append("image", f);
@@ -49,12 +50,14 @@ let doSubmit = function () {
     body: data,
   })
   .then((response) => response.json())
-  .then((json) => {
+  .then((json) => {r
     if (json.error) {
       let e = document.getElementById("output");
       e.innerHTML =
         `<div class="alert alert-danger mb-3" role="alert"><h3>Mosaic Generation Error</h3>${json.error}</div>`
         + e.innerHTML;
     }
+    setTimeout(() => {
+      jsConfetti.addConfetti();}, 200)
   });
 };
