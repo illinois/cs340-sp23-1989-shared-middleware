@@ -100,11 +100,11 @@ async def POST_makeMosaic():
         )
         for id in mmg_servers:
             worker.addMMG( mmg_servers[id] )
-            mmg_servers[id]['count'] +=1
+            # mmg_servers[id]['count'] +=1
         
         for id in reducers:
             worker.addReducer( reducers[id] )
-            reducers[id]['count'] +=1
+            # reducers[id]['count'] +=1
 
         result = await worker.createMosaic()
         return jsonify(result)
