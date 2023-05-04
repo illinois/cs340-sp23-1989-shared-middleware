@@ -47,9 +47,6 @@
                 <li class="nav-item">
                   <a href="/serverList" class="nav-link link-light" aria-current="page">Servers</a>
                 </li>
-                <li class="nav-item">
-                  <a href="/reducerList" class="nav-link link-light" aria-current="page">Reducers</a>
-                </li>
               </ul>
             </div>
           </nav>
@@ -63,6 +60,7 @@
               <th scope="col">Theme</th>
               <th scope="col">URL</th>
               <th scope="col">Author</th>
+              <th scope="col">Count</th>
             </tr>
           </thead>
           <tbody>
@@ -71,6 +69,7 @@
                     <td>{{ data[k]["name"] }}</td>
                     <td>{{ data[k]["url"] }}</td>
                     <td>{{ data[k]["author"] }}</td>
+                    <td>{{ data[k]["count"] }}</td>
                 </tr>
             {% endfor %}
           </tbody>

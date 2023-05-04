@@ -49,6 +49,7 @@ def PUT_addMMG():
         "author": author,
         "errorStatus": None,
         "tiles": tileImageCount,
+        "count": 0
     }
     print(f"✔️ Added MMG {name}: {url} by {author}")
     return "Success :)", 200
@@ -98,6 +99,7 @@ async def POST_makeMosaic():
         )
         for id in mmg_servers:
             worker.addMMG( mmg_servers[id] )
+            mmg_servers[id]['count'] +=1
         
         for id in reducers:
             worker.addReducer( reducers[id] )
@@ -120,7 +122,3 @@ def GET_serverList():
   """Route to get connected servers"""
   return render_template("servers.html", data=mmg_servers)
     
-@app.route("/reducerList", methods=["GET"])
-def GET_reducerList():
-  """Route to get connected servers"""
-  return render_template("reducers.html", data=reducers)
