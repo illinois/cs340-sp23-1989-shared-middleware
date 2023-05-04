@@ -5,7 +5,7 @@ import base64
 import httpx
 
 class MosaicWorker:
-  def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio, mmg_count):
+  def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio, mmgCount):
     self.baseImage = baseImage
     self.tilesAcross = tilesAcross
     self.renderedTileSize = renderedTileSize
@@ -23,7 +23,7 @@ class MosaicWorker:
     self.reducerCompleted = 0
     self.mosaicNextID = 1
 
-    self.mmg_count = mmg_count
+    self.mmgCount = mmgCount
 
   def addMMG(self, mmg):
     self.mmgsAvailable.append(mmg)
@@ -98,7 +98,7 @@ class MosaicWorker:
     print(f"[MosaicWorker]: Sending MMG request to \"{name}\" by {author} at {url}")
 
     try:
-      limits = httpx.Limits(max_keepalive_connections=self.mmg_count, max_connections=None, keepalive_expiry=30)
+      limits = httpx.Limits(max_keepalive_connections=self.mmgCount, max_connections=None, keepalive_expiry=30)
       async with httpx.AsyncClient(limits=limits, timeout=30.0) as client:
         req = await client.post(
             f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
