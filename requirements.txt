@@ -3,3 +3,4 @@ flask[async]
 requests
 python-dotenv
 flask_socketio
+httpx
