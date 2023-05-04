@@ -97,15 +97,24 @@ class MosaicWorker:
     print(f"[MosaicWorker]: Sending MMG request to \"{name}\" by {author} at {url}")
 
     try:
-      limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
-      async with httpx.AsyncClient(limits=limits, timeout=30.0) as client:
-        req = await client.post(
-            f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
-            files={"image": self.baseImage}
-        )
-    except httpx.RequestError as e:
-      mmg["error"] = "RequestError"
+      req = requests.post(
+          f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
+          files={"image": self.baseImage}
+      )
+    except requests.exceptions.ConnectionError as e:
+      mmg["error"] = "ConnectionError"
       return
+
+    # try:
+    #   limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
+    #   async with httpx.AsyncClient(limits=limits, timeout=30.0) as client:
+    #     req = await client.post(
+    #         f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
+    #         files={"image": self.baseImage}
+    #     )
+    # except httpx.RequestError as e:
+    #   mmg["error"] = "RequestError"
+    #   return
 
     mosaicImage = req.content
     self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"])
