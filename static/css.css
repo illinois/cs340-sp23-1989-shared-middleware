@@ -90,3 +90,11 @@ header {
 nav a {
   color: hsla(222, 100%, 19%, 1) !important;  
 }
+
+.server-details {
+  font-size: 10px;
+}
+
+.server-details td {
+  padding: 1px;
+}

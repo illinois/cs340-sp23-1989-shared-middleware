@@ -18,7 +18,6 @@
     />
 
     <link href="/static/css.css" rel="stylesheet" />
-
 </head>
 <body class="d-flex flex-column justify-content-between min-vh-100">
     <header class="py-1 mb-3">
@@ -58,24 +57,44 @@
     <main class="content container flex-grow-1 mb-2">
     <div class="display-4">MMG Servers</div>
     <table class="table">
-        <thead>
-            <tr>
-              <th scope="col">Theme</th>
-              <th scope="col">URL</th>
-              <th scope="col">Author</th>
-              <th scope="col">Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for k in data.keys() %}
-                <tr class="table-success">
-                    <td>{{ data[k]["name"] }}</td>
-                    <td>{{ data[k]["url"] }}</td>
-                    <td>{{ data[k]["author"] }}</td>
-                    <td>{{ data[k]["count"] }}</td>
-                </tr>
-            {% endfor %}
-          </tbody>
+      <thead>
+        <tr>
+          <th scope="col">Theme</th>
+          <th scope="col">URL</th>
+          <th scope="col">Author</th>
+          <th scope="col">Count</th>
+          <th scope="col">Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for author in data.keys() %}
+        <tr>
+          <th colspan="5">
+            {{ author }}
+          </th>
+        </tr>
+        {% for server in data[author] %}
+        <tr class="server-details">
+          <td>
+            {% if "type" in server %}
+            <b>Mosaic Reducer</b>
+            {% else %}
+            <b>MMG:</b> {{ server["name"] }}
+            {% endif %}
+          </td>
+          <td>{{ server["url"] }}</td>
+          <td>{{ server["author"] }}</td>
+          <td>{{ server["count"] }}</td>
+          <td>
+            {% if "error" in server %}
+            {{ server["error"] }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+
+      </tbody>
     </table>
-    </main>
+  </main>
 </body>
