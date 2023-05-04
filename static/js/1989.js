@@ -50,14 +50,16 @@ let doSubmit = function () {
     body: data,
   })
   .then((response) => response.json())
-  .then((json) => {r
+  .then((json) => {
     if (json.error) {
       let e = document.getElementById("output");
       e.innerHTML =
         `<div class="alert alert-danger mb-3" role="alert"><h3>Mosaic Generation Error</h3>${json.error}</div>`
         + e.innerHTML;
+      jsConfetti.addConfetti({emojis:['😢'],confettiNumber:10});
+    } else {
+      setTimeout(() => {
+        jsConfetti.addConfetti();}, 200)
     }
-    setTimeout(() => {
-      jsConfetti.addConfetti();}, 200)
   });
 };
