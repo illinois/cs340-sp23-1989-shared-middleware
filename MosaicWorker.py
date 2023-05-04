@@ -86,6 +86,7 @@ class MosaicWorker:
     )
 
     self.reducerCompleted = self.reducerCompleted + 1
+    reducer['count']+=1
 
 
   async def awaitMMG(self, mmg):
@@ -107,6 +108,7 @@ class MosaicWorker:
     self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"])
 
     self.mmgCompleted = self.mmgCompleted + 1
+    mmg['count']+=1
     #socketio.emit("progress update", str(completed / len(mmg_servers)))
 
 

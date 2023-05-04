@@ -75,6 +75,7 @@ def PUT_registerReducer():
         "id": id,
         "url": url,
         "author": author,
+        "count":0
     }
     print(f"✔️ Added reducer: {url} by {author}")
     return "Success :)", 200
@@ -103,6 +104,7 @@ async def POST_makeMosaic():
         
         for id in reducers:
             worker.addReducer( reducers[id] )
+            reducers[id]['count'] +=1
 
         result = await worker.createMosaic()
         return jsonify(result)
@@ -122,3 +124,7 @@ def GET_serverList():
   """Route to get connected servers"""
   return render_template("servers.html", data=mmg_servers)
     
+@app.route("/reducerList", methods=["GET"])
+def GET_reducerList():
+  """Route to get connected servers"""
+  return render_template("reducers.html", data=reducers)
