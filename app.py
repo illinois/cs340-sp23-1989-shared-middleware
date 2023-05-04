@@ -120,27 +120,20 @@ async def POST_makeMosaic():
 
 @app.route("/serverList", methods=["GET"])
 def GET_serverList():
-  """Route to get connected servers"""
-  servers_by_author = {}
-  for key in mmg_servers:
-      mmg = mmg_servers[key]
-      author = mmg["author"]
-      if author not in servers_by_author:
-          servers_by_author[author] = []
-      servers_by_author[author].append(mmg)
+    """Route to get connected servers"""
+    servers_by_author = {}
+    for key in mmg_servers:
+        mmg = mmg_servers[key]
+        author = mmg["author"]
+        if author not in servers_by_author:
+            servers_by_author[author] = []
+        servers_by_author[author].append(mmg)
       
-  for key in reducers:
-      reducer = reducers[key]
-      author = reducer["author"]
-      if author not in servers_by_author:
-          servers_by_author[author] = []
-      servers_by_author[author].append(reducer)
+    for key in reducers:
+        reducer = reducers[key]
+        author = reducer["author"]
+        if author not in servers_by_author:
+            servers_by_author[author] = []
+        servers_by_author[author].append(reducer)
 
-  print(servers_by_author)
-
-  return render_template("servers.html", data=servers_by_author)
-
-@app.route("/reducerList", methods=["GET"])
-def GET_reducerList():
-  """Route to get connected servers"""
-  return render_template("reducers.html", data=reducers)
+    return render_template("servers.html", data=servers_by_author)
