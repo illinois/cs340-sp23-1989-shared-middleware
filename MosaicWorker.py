@@ -131,6 +131,7 @@ class MosaicWorker:
     if len(self.mmgsAvailable) == 0:
       raise Exception("No MMGs are available on this server.")
 
+    random.shuffle(self.mmgsAvailable)
     self.expectedMosaics = (len(self.mmgsAvailable) * 2) - 1
 
     for mmg in self.mmgsAvailable:
