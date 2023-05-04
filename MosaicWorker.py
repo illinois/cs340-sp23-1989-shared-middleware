@@ -82,7 +82,7 @@ class MosaicWorker:
     mosaicImage = req.content
     self.processRenderedMosaic(
       mosaicImage,
-      f'Reduction of #{mosaic1["id"]} and #{mosaic2["id"]}',
+      f'Reduction of #{mosaic1["id"]} and #{mosaic2["id"]} by {reducer["author"]}',
       mosaic1["tiles"] + mosaic2["tiles"]
     )
 
