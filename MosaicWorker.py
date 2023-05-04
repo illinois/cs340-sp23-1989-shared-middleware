@@ -104,6 +104,10 @@ class MosaicWorker:
     except requests.exceptions.ConnectionError as e:
       mmg["error"] = "ConnectionError"
       return
+    
+    if req.status_code != 200:
+      mmg["error"] = f"HTTP Status {req.status_code}"
+      return
 
     # try:
     #   limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
