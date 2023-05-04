@@ -2,6 +2,7 @@ import asyncio
 import requests
 import random
 import base64
+import httpx
 
 class MosaicWorker:
   def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio):
@@ -95,12 +96,14 @@ class MosaicWorker:
     print(f"[MosaicWorker]: Sending MMG request to \"{name}\" by {author} at {url}")
 
     try:
-      req = requests.post(
-          f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
-          files={"image": self.baseImage}
-      )
-    except requests.exceptions.ConnectionError as e:
-      mmg["error"] = "ConnectionError"
+      limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
+      async with httpx.AsyncClient(limits=limits, timeout=30.0) as client:
+        req = await client.post(
+            f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
+            files={"image": self.baseImage}
+        )
+    except httpx.RequestError as e:
+      mmg["error"] = "RequestError"
       return
 
     mosaicImage = req.content
