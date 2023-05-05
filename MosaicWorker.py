@@ -2,10 +2,10 @@ import asyncio
 import requests
 import random
 import base64
-import httpx
+# import httpx
 
-limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
-client = httpx.AsyncClient(limits=limits, timeout=15)
+# limits = httpx.Limits(max_keepalive_connections=1000, max_connections=None, keepalive_expiry=30)
+# client = httpx.AsyncClient(limits=limits, timeout=15)
 
 class MosaicWorker:
   def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio):

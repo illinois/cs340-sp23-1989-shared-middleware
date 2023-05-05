@@ -1,8 +1,8 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import eventlet
-eventlet.monkey_patch()
+# import eventlet
+# eventlet.monkey_patch()
 
 from flask import Flask, jsonify, render_template, request
 import secrets
@@ -157,5 +157,5 @@ def GET_serverList():
 
 
 
-if __name__ == '__main__':
-    socketio.run(app, "0.0.0.0", 5000, debug=True)
+# if __name__ == '__main__':
+#     socketio.run(app, "0.0.0.0", 5000, debug=True)
