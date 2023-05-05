@@ -109,8 +109,8 @@ async def POST_makeMosaic():
 
         worker = MosaicWorker(
             baseImage = baseImage,
-            tilesAcross = request.form["tilesAcross"],
-            renderedTileSize = request.form["renderedTileSize"],
+            tilesAcross = int(request.form["tilesAcross"]),
+            renderedTileSize = int(request.form["renderedTileSize"]),
             fileFormat = request.form["fileFormat"],
             socketio = socketio,
         )

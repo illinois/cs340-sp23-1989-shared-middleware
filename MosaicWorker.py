@@ -29,6 +29,44 @@ class MosaicWorker:
   def addReducer(self, reducer):
     self.reducersAvailable.append(reducer)
 
+  def getImageSize(self, imageBuffer):
+    import struct
+    import io
+    from PIL import Image
+
+    ## Check if PNG, just read from IHDR:
+    if imageBuffer[0] == 137 and imageBuffer[1] == 80:
+      width, height = struct.unpack('>ii', imageBuffer[16:24])
+
+    ## Otherwise, use PIL:
+    else:
+      img = Image.open(io.BytesIO(imageBuffer))
+      width = img.width 
+      height = img.height
+
+    return width, height
+
+
+  def validateMosaicImageSize(self, server, baseImage, mosaicImage):
+    try:
+      baseWidth, baseHeight = self.getImageSize(baseImage)
+      mosaicWidth, mosaicHeight = self.getImageSize(mosaicImage)
+    except Exception as e:
+      server["error"] = f"Image Error: {e}"
+      return False
+
+    d = baseWidth / self.tilesAcross
+    verticalTiles = baseHeight // d
+
+    requiredWidth = self.tilesAcross * self.renderedTileSize
+    requiredHeight = verticalTiles * self.renderedTileSize
+
+    if mosaicWidth != requiredWidth or mosaicHeight != requiredHeight:
+      server["error"] = f"Invalid mosaic image size: required ({requiredWidth} x {requiredHeight}), but mosaic was ({mosaicWidth}, {mosaicHeight})"
+      return False
+    
+    return True
+
 
   def processRenderedMosaic(self, mosaicImage, description, tiles):
     """Stores a rendered mosaic, queueing up reduction or further reduction if possible."""
@@ -53,11 +91,11 @@ class MosaicWorker:
     self.mosaicNextID = self.mosaicNextID + 1
 
     if len(self.reducerQueue) >= 2:
-       mosaic1 = self.reducerQueue.pop()
-       mosaic2 = self.reducerQueue.pop()
+      mosaic1 = self.reducerQueue.pop()
+      mosaic2 = self.reducerQueue.pop()
 
-       reducerTask = asyncio.create_task(self.awaitReducer(mosaic1, mosaic2))
-       self.reducerTasks.append(reducerTask)
+      reducerTask = asyncio.create_task(self.awaitReducer(mosaic1, mosaic2))
+      self.reducerTasks.append(reducerTask)
      
 
   async def awaitReducer(self, mosaic1, mosaic2):
@@ -79,7 +117,21 @@ class MosaicWorker:
       }
     )
 
+    if req.status_code != 200:
+      reducer["error"] = f"HTTP Status {req.status_code}"
+      # Remove bad reducer and retry:
+      self.reducersAvailable.remove(reducer)
+      self.awaitReducer(mosaic1, mosaic2)
+      return
+
     mosaicImage = req.content
+    if not self.validateMosaicImageSize(reducer, self.baseImage, mosaicImage):
+      # Remove bad reducer and retry:
+      self.reducersAvailable.remove(reducer)
+      self.awaitReducer(mosaic1, mosaic2)
+      return
+
+
     self.processRenderedMosaic(
       mosaicImage,
       f'Reduction of #{mosaic1["id"]} and #{mosaic2["id"]} by {reducer["author"]}',
@@ -108,6 +160,7 @@ class MosaicWorker:
     if req.status_code != 200:
       mmg["error"] = f"HTTP Status {req.status_code}"
       return
+    
 
     # try:
     #   limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
@@ -121,8 +174,10 @@ class MosaicWorker:
     #   return
 
     mosaicImage = req.content
-    self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"])
+    if not self.validateMosaicImageSize(mmg, self.baseImage, mosaicImage):
+      return
 
+    self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"])
     self.mmgCompleted = self.mmgCompleted + 1
     mmg['count'] += 1
 
