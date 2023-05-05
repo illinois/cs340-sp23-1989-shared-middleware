@@ -61,7 +61,7 @@ class MosaicWorker:
 
     print("image")
     d = baseWidth / self.tilesAcross
-    verticalTiles = baseHeight // d
+    verticalTiles = int(baseHeight / d)
     print(baseWidth, baseHeight, d, verticalTiles)
  
     requiredWidth = int(self.tilesAcross * self.renderedTileSize)
