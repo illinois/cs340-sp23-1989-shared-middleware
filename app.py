@@ -185,7 +185,7 @@ def GET_serverList():
 
 @app.route("/uploadData", methods=["POST"])
 def upload_data():
-    """Route to upload data to the server"""
+    """Route to upload data to the database"""
     data_type = request.form.get("type")
     name = request.form.get("name", default=None)
     url = request.form.get("url")
