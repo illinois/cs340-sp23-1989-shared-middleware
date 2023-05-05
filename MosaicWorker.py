@@ -106,10 +106,10 @@ class MosaicWorker:
      
 
   async def sendRequest(self, url, files):
-    return await client.post(
-      f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
-      files = files
-    )
+    # return await client.post(
+    #   f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
+    #   files = files
+    # )
 
     return requests.post(
       f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
