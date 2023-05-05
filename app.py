@@ -63,7 +63,7 @@ def PUT_addMMG():
     id = secrets.token_hex(20)
     count = 0
 
-    # Check for existing MMG with same URL:
+    # Check for existing MMG with same URL in DB:
     existing_mmg = MMG.query.filter_by(url=url).first()
     if existing_mmg:
         id = existing_mmg.id
@@ -104,7 +104,7 @@ def PUT_registerReducer():
     id = secrets.token_hex(20)
     count = 0
 
-    # Check for existing Reducer with same URL:
+    # Check for existing Reducer with same URL in DB:
     existing_reducer = Reducer.query.filter_by(url=url).first()
     if existing_reducer:
         id = existing_reducer.id
@@ -113,6 +113,7 @@ def PUT_registerReducer():
     for existingId in reducers:
         if reducers[existingId]["url"] == url:
             id = existingId
+            count = reducers[existingId]["count"]
             break
 
     reducers[id] = {
