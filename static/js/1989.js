@@ -7,7 +7,7 @@ socket.on('progress update', function (progress) {
   progbar.textContent = String(Math.round(Number(progress * 100))) + '%';
 });
 
-socket.on('mosaic', function (mosaicInfo) {   
+socket.on('mosaic', function (mosaicInfo) {
   var blob = new Blob( [ mosaicInfo.image ], { type: "image/png" } );
   var imageUrl = (window.URL || window.webkitURL).createObjectURL( blob );
 
