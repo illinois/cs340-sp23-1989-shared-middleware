@@ -68,13 +68,12 @@ def PUT_addMMG():
     if existing_mmg:
         id = existing_mmg.id
         count = existing_mmg.count
-    else:
-        # Check for existing MMG with same URL in memory:
-        for existingId in mmg_servers:
-            if mmg_servers[existingId]["url"] == url:
-                id = existingId
-                count = mmg_servers[existingId]["count"]
-                break
+    # Check for existing MMG with same URL in memory:
+    for existingId in mmg_servers:
+        if mmg_servers[existingId]["url"] == url:
+            id = existingId
+            count = mmg_servers[existingId]["count"]
+            break
 
     mmg_servers[id] = {
         "id": id,
@@ -110,13 +109,11 @@ def PUT_registerReducer():
     if existing_reducer:
         id = existing_reducer.id
         count = existing_reducer.count
-    else:
-        # Check for existing Reducer with same URL in memory:
-        for existingId in reducers:
-            if reducers[existingId]["url"] == url:
-                id = existingId
-                count = reducers[existingId]["count"]
-                break
+    # Check for existing Reducer with same URL in memory:
+    for existingId in reducers:
+        if reducers[existingId]["url"] == url:
+            id = existingId
+            break
 
     reducers[id] = {
         "id": id,
