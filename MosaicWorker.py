@@ -2,6 +2,9 @@ import asyncio
 import requests
 import random
 import base64
+from PIL import Image
+import io
+
 
 class MosaicWorker:
   def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio):
@@ -103,9 +106,23 @@ class MosaicWorker:
     except requests.exceptions.ConnectionError as e:
       mmg["error"] = "ConnectionError"
       return
+    
 
     mosaicImage = req.content
+    
+    mosaicImgObj = Image.open(io.BytesIO(mosaicImage))
+    baseImgObj = Image.open(io.BytesIO(self.baseImage))
+    origin_window_size = baseImgObj.width /int(self.tilesAcross) 
+    num_tiles_vert = int( baseImgObj.height // origin_window_size)
+    expected_width = int(self.tilesAcross) * int(self.renderedTileSize)
+    expected_height = num_tiles_vert * int(self.renderedTileSize)
+    if mosaicImgObj.size != (expected_width, expected_height):
+        raise ValueError(f"Invalid mosaic image size: expected ({expected_width}, {expected_height}), but got {mosaicImgObj.size}")
+
+
     self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"])
+
+    
 
     self.mmgCompleted = self.mmgCompleted + 1
     mmg['count']+=1
