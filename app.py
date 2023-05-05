@@ -1,21 +1,22 @@
-import base64
 from dotenv import load_dotenv
-
-from MosaicWorker import MosaicWorker
 load_dotenv()
 
-import requests
-import time
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, jsonify, render_template, request
-import asyncio
 import secrets
 from flask_socketio import SocketIO
+from MosaicWorker import MosaicWorker
 
 mmg_servers = {}
 reducers = {}
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+if __name__ == '__main__':
+    socketio = SocketIO(app, async_mode="eventlet")
+else:
+    socketio = SocketIO(app)
 
 
 @app.route("/", methods=["GET"])
@@ -115,10 +116,12 @@ async def POST_makeMosaic():
             socketio = socketio,
         )
         for id in mmg_servers:
-            worker.addMMG( mmg_servers[id] )
+            if "disabled" not in mmg_servers[id]:
+                worker.addMMG( mmg_servers[id] )
         
         for id in reducers:
-            worker.addReducer( reducers[id] )
+            if "disabled" not in reducers[id]:
+                worker.addReducer( reducers[id] )
 
         result = await worker.createMosaic()
         return jsonify(result)
@@ -152,3 +155,8 @@ def GET_serverList():
         servers_by_author[author].append(reducer)
 
     return render_template("servers.html", data=servers_by_author)
+
+
+
+if __name__ == '__main__':
+    socketio.run(app, "0.0.0.0", 5000, debug=True)
