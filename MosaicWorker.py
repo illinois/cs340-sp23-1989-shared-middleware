@@ -4,7 +4,7 @@ import random
 import base64
 from PIL import Image
 import io
-
+import httpx
 
 class MosaicWorker:
   def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio):
@@ -84,7 +84,7 @@ class MosaicWorker:
     mosaicImage = req.content
     self.processRenderedMosaic(
       mosaicImage,
-      f'Reduction of #{mosaic1["id"]} and #{mosaic2["id"]}',
+      f'Reduction of #{mosaic1["id"]} and #{mosaic2["id"]} by {reducer["author"]}',
       mosaic1["tiles"] + mosaic2["tiles"]
     )
 
@@ -107,6 +107,20 @@ class MosaicWorker:
       mmg["error"] = "ConnectionError"
       return
     
+    if req.status_code != 200:
+      mmg["error"] = f"HTTP Status {req.status_code}"
+      return
+
+    # try:
+    #   limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
+    #   async with httpx.AsyncClient(limits=limits, timeout=30.0) as client:
+    #     req = await client.post(
+    #         f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
+    #         files={"image": self.baseImage}
+    #     )
+    # except httpx.RequestError as e:
+    #   mmg["error"] = "RequestError"
+    #   return
 
     mosaicImage = req.content
     
@@ -132,6 +146,7 @@ class MosaicWorker:
     if len(self.mmgsAvailable) == 0:
       raise Exception("No MMGs are available on this server.")
 
+    random.shuffle(self.mmgsAvailable)
     self.expectedMosaics = (len(self.mmgsAvailable) * 2) - 1
 
     for mmg in self.mmgsAvailable:

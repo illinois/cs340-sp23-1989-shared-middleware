@@ -21,11 +21,14 @@ socket.on('mosaic', function (mosaicInfo) {
   html += `</div>`;
 
   let e = document.getElementById("mosaics");
+  e.innerHTML += html;
+  /*
   if (mosaicInfo.id == 1) {
     e.innerHTML = html;
   } else {
     e.innerHTML += html;
   }
+  */
 });
 
 

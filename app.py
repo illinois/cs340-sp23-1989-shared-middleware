@@ -41,15 +41,22 @@ def PUT_addMMG():
     author = request.form["author"]
     tileImageCount = int(request.form["tileImageCount"])
     id = secrets.token_hex(20)
+    count = 0
+
+    # Check for existing MMG with same URL:
+    for existingId in mmg_servers:
+        if mmg_servers[existingId]["url"] == url:
+            id = existingId
+            count = mmg_servers[existingId]["count"]
+            break
 
     mmg_servers[id] = {
         "id": id,
         "name": name,
         "url": url,
         "author": author,
-        "errorStatus": None,
         "tiles": tileImageCount,
-        "count": 0
+        "count": count
     }
     print(f"✔️ Added MMG {name}: {url} by {author}")
     return "Success :)", 200
@@ -70,12 +77,21 @@ def PUT_registerReducer():
     url = request.form["url"]
     author = request.form["author"]
     id = secrets.token_hex(20)
+    count = 0
+
+    # Check for existing MMG with same URL:
+    for existingId in reducers:
+        if reducers[existingId]["url"] == url:
+            id = existingId
+            count = reducers[existingId]["count"]
+            break
 
     reducers[id] = {
         "id": id,
         "url": url,
         "author": author,
-        "count":0
+        "type": "reducer",
+        "count": count
     }
     print(f"✔️ Added reducer: {url} by {author}")
     return "Success :)", 200
@@ -119,10 +135,20 @@ async def POST_makeMosaic():
 
 @app.route("/serverList", methods=["GET"])
 def GET_serverList():
-  """Route to get connected servers"""
-  return render_template("servers.html", data=mmg_servers)
-    
-@app.route("/reducerList", methods=["GET"])
-def GET_reducerList():
-  """Route to get connected servers"""
-  return render_template("reducers.html", data=reducers)
+    """Route to get connected servers"""
+    servers_by_author = {}
+    for key in mmg_servers:
+        mmg = mmg_servers[key]
+        author = mmg["author"]
+        if author not in servers_by_author:
+            servers_by_author[author] = []
+        servers_by_author[author].append(mmg)
+      
+    for key in reducers:
+        reducer = reducers[key]
+        author = reducer["author"]
+        if author not in servers_by_author:
+            servers_by_author[author] = []
+        servers_by_author[author].append(reducer)
+
+    return render_template("servers.html", data=servers_by_author)
