@@ -51,6 +51,7 @@ class MosaicWorker:
 
 
   def validateMosaicImageSize(self, server, baseImage, mosaicImage):
+    print("validate")
     try:
       baseWidth, baseHeight = self.getImageSize(baseImage)
       mosaicWidth, mosaicHeight = self.getImageSize(mosaicImage)
@@ -58,8 +59,11 @@ class MosaicWorker:
       server["error"] = f"Image Error: {e}"
       return False
 
+    print("image")
     d = baseWidth / self.tilesAcross
+    print(d)
     verticalTiles = baseHeight // d
+    print(verticalTiles)
 
     requiredWidth = int(self.tilesAcross * self.renderedTileSize)
     requiredHeight = int(verticalTiles * self.renderedTileSize)
@@ -68,6 +72,7 @@ class MosaicWorker:
       server["error"] = f"Invalid mosaic image size: required ({requiredWidth} x {requiredHeight}), but mosaic was ({mosaicWidth}, {mosaicHeight})"
       return False
     
+    print("validated")
     return True
 
 
@@ -124,22 +129,24 @@ class MosaicWorker:
 
 
     error = None
+    req = None
     try:
       req = await self.sendRequest(url, files = {"baseImage": self.baseImage, "mosaic1": mosaic1["mosaicImage"], "mosaic2": mosaic2["mosaicImage"]})
     except Exception as e:
       reducer["disabled"] = True
       error = f"ConnectionError: {e}"
-        
-    if req.status_code != 200:
-      error = f"HTTP Status {req.status_code}"
+    
+    if req:
+      if req.status_code != 200:
+        error = f"HTTP Status {req.status_code}"
 
-    if req.status_code >= 500:
-      reducer["disabled"] = True
+      if req.status_code >= 500:
+        reducer["disabled"] = True
 
-    mosaicImage = req.content
-    if not self.validateMosaicImageSize(reducer, self.baseImage, mosaicImage):
-      reducer["disabled"] = True
-      error = reducer["error"]
+      mosaicImage = req.content
+      if not self.validateMosaicImageSize(reducer, self.baseImage, mosaicImage):
+        reducer["disabled"] = True
+        error = reducer["error"]
 
     if error:
       reducer["error"] = error
