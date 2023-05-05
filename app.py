@@ -131,8 +131,7 @@ async def POST_makeMosaic():
         return jsonify({"error": "Please upload an image file."}), 400
     
     except Exception as e:
-        import traceback
-        traceback.print_exception(e)
+        print(e)
         return jsonify({"error": str(e)}), 400
 
 

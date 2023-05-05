@@ -60,11 +60,10 @@ class MosaicWorker:
       return False
 
     print("image")
+    print(baseWidth, baseHeight, d, verticalTiles)
     d = baseWidth / self.tilesAcross
-    print(d)
     verticalTiles = baseHeight // d
-    print(verticalTiles)
-
+ 
     requiredWidth = int(self.tilesAcross * self.renderedTileSize)
     requiredHeight = int(verticalTiles * self.renderedTileSize)
 
@@ -152,7 +151,7 @@ class MosaicWorker:
       reducer["error"] = error
       # Remove bad reducer and retry:
       self.reducersAvailable.remove(reducer)
-      self.awaitReducer(mosaic1, mosaic2)      
+      await self.awaitReducer(mosaic1, mosaic2)
       return
 
 
