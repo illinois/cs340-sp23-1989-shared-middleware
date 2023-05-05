@@ -51,7 +51,6 @@ class MosaicWorker:
 
 
   def validateMosaicImageSize(self, server, baseImage, mosaicImage):
-    print("validate")
     try:
       baseWidth, baseHeight = self.getImageSize(baseImage)
       mosaicWidth, mosaicHeight = self.getImageSize(mosaicImage)
@@ -59,10 +58,8 @@ class MosaicWorker:
       server["error"] = f"Image Error: {e}"
       return False
 
-    print("image")
     d = baseWidth / self.tilesAcross
     verticalTiles = int(baseHeight / d)
-    print(baseWidth, baseHeight, d, verticalTiles)
  
     requiredWidth = int(self.tilesAcross * self.renderedTileSize)
     requiredHeight = int(verticalTiles * self.renderedTileSize)
@@ -71,7 +68,6 @@ class MosaicWorker:
       server["error"] = f"Invalid mosaic image size: required ({requiredWidth} x {requiredHeight}), but mosaic was ({mosaicWidth}, {mosaicHeight})"
       return False
     
-    print("validated")
     return True
 
 
