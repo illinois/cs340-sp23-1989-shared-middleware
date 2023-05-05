@@ -98,3 +98,20 @@ nav a {
 .server-details td {
   padding: 1px;
 }
+
+.upload-data {
+  font-family: 'Share Tech Mono', monospace; 
+  background-color: #DD3403;
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 10px;
+  margin: 2px 2px;
+  opacity: 0.6;
+  transition: 0.3s;
+  display: inline-block;
+  text-decoration: none;
+  cursor: pointer;
+}
+.upload-data:hover {opacity: 1}

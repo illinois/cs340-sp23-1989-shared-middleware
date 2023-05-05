@@ -10,6 +10,7 @@ from flask import Flask, jsonify, render_template, request
 import asyncio
 import secrets
 from flask_socketio import SocketIO
+from flask_sqlalchemy import SQLAlchemy
 
 mmg_servers = {}
 reducers = {}
@@ -17,6 +18,25 @@ reducers = {}
 app = Flask(__name__)
 socketio = SocketIO(app)
 
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///middleware.db'
+db = SQLAlchemy(app)
+
+class MMG(db.Model):
+    id = db.Column(db.String(120), primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    url = db.Column(db.String(120), nullable=False)
+    author = db.Column(db.String(80), nullable=False)
+    tiles = db.Column(db.Integer, nullable=False)
+    count = db.Column(db.Integer, nullable=False)
+
+class Reducer(db.Model):
+    id = db.Column(db.String(120), primary_key=True)
+    url = db.Column(db.String(120), nullable=False)
+    author = db.Column(db.String(80), nullable=False)
+    count = db.Column(db.Integer, nullable=False)
+
+with app.app_context():
+    db.create_all()
 
 @app.route("/", methods=["GET"])
 def GET_index():
@@ -44,11 +64,17 @@ def PUT_addMMG():
     count = 0
 
     # Check for existing MMG with same URL:
-    for existingId in mmg_servers:
-        if mmg_servers[existingId]["url"] == url:
-            id = existingId
-            count = mmg_servers[existingId]["count"]
-            break
+    existing_mmg = MMG.query.filter_by(url=url).first()
+    if existing_mmg:
+        id = existing_mmg.id
+        count = existing_mmg.count
+    else:
+        # Check for existing MMG with same URL in memory:
+        for existingId in mmg_servers:
+            if mmg_servers[existingId]["url"] == url:
+                id = existingId
+                count = mmg_servers[existingId]["count"]
+                break
 
     mmg_servers[id] = {
         "id": id,
@@ -79,12 +105,18 @@ def PUT_registerReducer():
     id = secrets.token_hex(20)
     count = 0
 
-    # Check for existing MMG with same URL:
-    for existingId in reducers:
-        if reducers[existingId]["url"] == url:
-            id = existingId
-            count = reducers[existingId]["count"]
-            break
+    # Check for existing Reducer with same URL:
+    existing_reducer = Reducer.query.filter_by(url=url).first()
+    if existing_reducer:
+        id = existing_reducer.id
+        count = existing_reducer.count
+    else:
+        # Check for existing Reducer with same URL in memory:
+        for existingId in reducers:
+            if reducers[existingId]["url"] == url:
+                id = existingId
+                count = reducers[existingId]["count"]
+                break
 
     reducers[id] = {
         "id": id,
@@ -152,3 +184,45 @@ def GET_serverList():
         servers_by_author[author].append(reducer)
 
     return render_template("servers.html", data=servers_by_author)
+
+@app.route("/uploadData", methods=["POST"])
+def upload_data():
+    """Route to upload data to the server"""
+    data_type = request.form.get("type")
+    name = request.form.get("name", default=None)
+    url = request.form.get("url")
+    author = request.form.get("author")
+    count = request.form.get("count", type=int)
+    tileImageCount = request.form.get("tileImageCount", default=None, type=int)
+
+    if data_type == "mmg":
+        # Check for existing MMG with same URL in database
+        existing_mmg = MMG.query.filter_by(url=url).first()
+        if existing_mmg:
+            # If mmg aready in db and the count is the same, then we don't need to update the database
+            if existing_mmg.count == count: return jsonify({"message": "Data already uploaded"}), 200
+            else: existing_mmg.count = count
+        else:
+            # Upload new mmg to database
+            mmg = MMG(id=secrets.token_hex(20), name=name, url=url, author=author, tiles=tileImageCount, count=count)
+            db.session.add(mmg)
+
+    elif data_type == "reducer":
+        # Check for existing Reducer with same URL in database
+        existing_reducer = Reducer.query.filter_by(url=url).first()
+        if existing_reducer:
+            # If reducer aready in db and the count is the same, then we don't need to update the database
+            if existing_reducer.count == count: return jsonify({"message": "Data already uploaded"}), 200
+            else: existing_reducer.count = count
+        else:
+            # Upload new reducer to database
+            reducer = Reducer(id=secrets.token_hex(20), url=url, author=author, count=count)
+            db.session.add(reducer)
+
+    else:
+        # Invalid data type (should never happen)
+        return jsonify({"error": "Invalid data type"}), 400
+    
+    # Commit changes to database
+    db.session.commit()
+    return jsonify({"message": "Data successfully uploaded"}), 200

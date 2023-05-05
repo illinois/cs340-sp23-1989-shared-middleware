@@ -61,6 +61,7 @@
           <th scope="col">Author</th>
           <th scope="col">Count</th>
           <th scope="col">Error</th>
+          <th scope="col">Database</th>
         </tr>
       </thead>
       <tbody>
@@ -85,6 +86,41 @@
           <td>
             {% if "error" in server %}
             {{ server["error"] }}
+            {% endif %}
+          </td>
+          <td>
+            {% if "type" in server %}
+            <button class="upload-data" onclick="
+              (async () => {
+                const formData = new FormData();
+                formData.append('type', 'reducer');
+                formData.append('url', '{{ server.url }}');
+                formData.append('author', '{{ server.author }}');
+                formData.append('count', '{{ server.count }}');
+                const response = await fetch('/uploadData', { method: 'POST', body: formData });
+                const jsonResponse = await response.json();
+                alert(jsonResponse.message);
+              })()
+            ">
+              Upload
+            </button>
+            {% else %}
+            <button class="upload-data" onclick="
+              (async () => {
+                const formData = new FormData();
+                formData.append('type', 'mmg');
+                formData.append('name', '{{ server.name }}');
+                formData.append('url', '{{ server.url }}');
+                formData.append('author', '{{ server.author }}');
+                formData.append('count', '{{ server.count }}');
+                formData.append('tileImageCount', '{{ server.tiles }}');
+                const response = await fetch('/uploadData', { method: 'POST', body: formData });
+                const jsonResponse = await response.json();
+                alert(jsonResponse.message);
+              })()
+            ">
+              Upload
+            </button>
             {% endif %}
           </td>
         </tr>
