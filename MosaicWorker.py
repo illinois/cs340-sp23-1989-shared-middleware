@@ -58,8 +58,8 @@ class MosaicWorker:
     d = baseWidth / self.tilesAcross
     verticalTiles = baseHeight // d
 
-    requiredWidth = self.tilesAcross * self.renderedTileSize
-    requiredHeight = verticalTiles * self.renderedTileSize
+    requiredWidth = int(self.tilesAcross * self.renderedTileSize)
+    requiredHeight = int(verticalTiles * self.renderedTileSize)
 
     if mosaicWidth != requiredWidth or mosaicHeight != requiredHeight:
       server["error"] = f"Invalid mosaic image size: required ({requiredWidth} x {requiredHeight}), but mosaic was ({mosaicWidth}, {mosaicHeight})"
@@ -98,6 +98,12 @@ class MosaicWorker:
       self.reducerTasks.append(reducerTask)
      
 
+  async def sendRequest(self, url, files):
+    return requests.post(
+      f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
+      files = files
+    )
+
   async def awaitReducer(self, mosaic1, mosaic2):
     if len(self.reducersAvailable) == 0:
       raise Exception("No reducers are available on this server.")
@@ -108,28 +114,32 @@ class MosaicWorker:
     url = reducer["url"]
     print(f'[MosaicWorker]:   url: {url}')
 
-    req = requests.post(
-      f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
-      files = {
-        "baseImage": self.baseImage,
-        "mosaic1": mosaic1["mosaicImage"],
-        "mosaic2": mosaic2["mosaicImage"],
-      }
-    )
 
+    error = None
+    try:
+      req = await self.sendRequest(url, files = {"baseImage": self.baseImage, "mosaic1": mosaic1["mosaicImage"], "mosaic2": mosaic2["mosaicImage"]})
+    except Exception as e:
+      reducer["disabled"] = True
+      error = f"ConnectionError: {e}"
+        
     if req.status_code != 200:
-      reducer["error"] = f"HTTP Status {req.status_code}"
-      # Remove bad reducer and retry:
-      self.reducersAvailable.remove(reducer)
-      self.awaitReducer(mosaic1, mosaic2)
-      return
+      error = f"HTTP Status {req.status_code}"
+
+    if req.status_code >= 500:
+      reducer["disabled"] = True
 
     mosaicImage = req.content
     if not self.validateMosaicImageSize(reducer, self.baseImage, mosaicImage):
+      reducer["disabled"] = True
+      error = reducer["error"]
+
+    if error:
+      reducer["error"] = error
       # Remove bad reducer and retry:
       self.reducersAvailable.remove(reducer)
-      self.awaitReducer(mosaic1, mosaic2)
+      self.awaitReducer(mosaic1, mosaic2)      
       return
+
 
 
     self.processRenderedMosaic(
@@ -150,17 +160,24 @@ class MosaicWorker:
 
     try:
       req = requests.post(
-          f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
-          files={"image": self.baseImage}
+        f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
+        files={"image": self.baseImage}
       )
     except requests.exceptions.ConnectionError as e:
       mmg["error"] = "ConnectionError"
+      mmg["disabled"] = True
+      self.expectedMosaics -= 2
       return
-    
+
+    if req.status_code >= 500:
+      mmg["disabled"] = True
+
     if req.status_code != 200:
       mmg["error"] = f"HTTP Status {req.status_code}"
+      self.expectedMosaics -= 2
       return
     
+
 
     # try:
     #   limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
@@ -175,6 +192,7 @@ class MosaicWorker:
 
     mosaicImage = req.content
     if not self.validateMosaicImageSize(mmg, self.baseImage, mosaicImage):
+      self.expectedMosaics -= 2
       return
 
     self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"])
