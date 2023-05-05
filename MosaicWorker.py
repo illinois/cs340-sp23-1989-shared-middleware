@@ -4,6 +4,9 @@ import random
 import base64
 import httpx
 
+limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
+client = httpx.AsyncClient(limits=limits, timeout=15)
+
 class MosaicWorker:
   def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio):
     self.baseImage = baseImage
@@ -99,6 +102,11 @@ class MosaicWorker:
      
 
   async def sendRequest(self, url, files):
+    return await client.post(
+      f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
+      files = files
+    )
+
     return requests.post(
       f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
       files = files
@@ -177,18 +185,6 @@ class MosaicWorker:
       self.expectedMosaics -= 2
       return
     
-
-
-    # try:
-    #   limits = httpx.Limits(max_keepalive_connections=10, max_connections=None, keepalive_expiry=30)
-    #   async with httpx.AsyncClient(limits=limits, timeout=30.0) as client:
-    #     req = await client.post(
-    #         f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
-    #         files={"image": self.baseImage}
-    #     )
-    # except httpx.RequestError as e:
-    #   mmg["error"] = "RequestError"
-    #   return
 
     mosaicImage = req.content
     if not self.validateMosaicImageSize(mmg, self.baseImage, mosaicImage):
