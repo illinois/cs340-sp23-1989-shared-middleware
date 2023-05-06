@@ -16,6 +16,7 @@ reducers = {}
 
 app = Flask(__name__)
 app.jinja_env.filters['quote_plus'] = lambda u: quote_plus(u)
+
 if __name__ == '__main__':
     socketio = SocketIO(app, async_mode="eventlet")
 else:
