@@ -225,4 +225,7 @@ async def GET_testMosaic():
         return jsonify({"error": str(e)}), 400
 
 if __name__ == '__main__':
-    socketio.run(app, "0.0.0.0", 5000, debug=False)
+    port = 5000
+    if os.getenv("FLASK_RUN_PORT"):
+        port = int(os.getenv("FLASK_RUN_PORT"))
+    socketio.run(app, "0.0.0.0", port, debug=False)
