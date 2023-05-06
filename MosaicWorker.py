@@ -1,4 +1,5 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import requests
 import random
 import base64
@@ -25,6 +26,8 @@ class MosaicWorker:
     self.mmgCompleted = 0
     self.reducerCompleted = 0
     self.mosaicNextID = 1
+
+    self.threadPool = ThreadPoolExecutor(max_workers=8)
 
   def addMMG(self, mmg):
     self.mmgsAvailable.append(mmg)
@@ -97,9 +100,17 @@ class MosaicWorker:
       mosaic1 = self.reducerQueue.pop()
       mosaic2 = self.reducerQueue.pop()
 
-      reducerTask = asyncio.create_task(self.awaitReducer(mosaic1, mosaic2))
+      #reducerTask = asyncio.create_task(self.awaitReducer(mosaic1, mosaic2))
+      reducerTask = self.threadPool.submit(self.awaitReducer(mosaic1, mosaic2))
       self.reducerTasks.append(reducerTask)
      
+
+  def sendRequest2(self, url, files):
+    return requests.post(
+      f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
+      files = files
+    )
+
 
   async def sendRequest(self, url, files):
     # return await client.post(
@@ -107,12 +118,15 @@ class MosaicWorker:
     #   files = files
     # )
 
-    return requests.post(
-      f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
-      files = files
-    )
+    # return requests.post(
+    #   f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
+    #   files = files
+    # )
 
-  async def awaitReducer(self, mosaic1, mosaic2):
+    return await asyncio.to_thread(self.sendRequest2, url, files)
+
+
+  def awaitReducer(self, mosaic1, mosaic2):
     if len(self.reducersAvailable) == 0:
       raise Exception("No reducers are available on this server.")
 
@@ -126,7 +140,7 @@ class MosaicWorker:
     error = None
     req = None
     try:
-      req = await self.sendRequest(url, files = {"baseImage": self.baseImage, "mosaic1": mosaic1["mosaicImage"], "mosaic2": mosaic2["mosaicImage"]})
+      req = self.sendRequest2(url, files = {"baseImage": self.baseImage, "mosaic1": mosaic1["mosaicImage"], "mosaic2": mosaic2["mosaicImage"]})
     except Exception as e:
       reducer["disabled"] = True
       error = f"ConnectionError: {e}"
@@ -147,7 +161,8 @@ class MosaicWorker:
       reducer["error"] = error
       # Remove bad reducer and retry:
       self.reducersAvailable.remove(reducer)
-      await self.awaitReducer(mosaic1, mosaic2)
+      reducerFuture = self.threadPool.submit(self.awaitReducer(mosaic1, mosaic2))
+      self.reducerTasks.append(reducerFuture)
       return
 
 
@@ -162,19 +177,16 @@ class MosaicWorker:
     reducer['count'] += 1
 
 
-  async def awaitMMG(self, mmg):
+  def awaitMMG(self, mmg):
     url = mmg["url"]
     name = mmg["name"]
     author = mmg["author"]
     print(f"[MosaicWorker]: Sending MMG request to \"{name}\" by {author} at {url}")
 
     try:
-      req = requests.post(
-        f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
-        files={"image": self.baseImage}
-      )
-    except requests.exceptions.ConnectionError as e:
-      mmg["error"] = "ConnectionError"
+      req = self.sendRequest2(url, files={"image": self.baseImage})
+    except Exception as e:
+      mmg["error"] = f"ConnectionError: {e}"
       mmg["disabled"] = True
       self.expectedMosaics -= 2
       return
@@ -198,7 +210,7 @@ class MosaicWorker:
     mmg['count'] += 1
 
 
-  async def createMosaic(self):
+  def createMosaic(self):
     if len(self.mmgsAvailable) == 0:
       raise Exception("No MMGs are available on this server.")
 
@@ -206,11 +218,20 @@ class MosaicWorker:
     self.expectedMosaics = (len(self.mmgsAvailable) * 2) - 1
 
     for mmg in self.mmgsAvailable:
-       mmgTask = asyncio.create_task(self.awaitMMG(mmg))
-       self.mmgTasks.append(mmgTask)
+       mmgFuture = self.threadPool.submit(self.awaitMMG(mmg))
+       self.mmgTasks.append(mmgFuture)
 
-    await asyncio.gather(*self.mmgTasks)
-    await asyncio.gather(*self.reducerTasks)
+    #await asyncio.gather(*self.mmgTasks)
+    #await asyncio.gather(*self.reducerTasks)
+    import concurrent
+    concurrent.futures.wait(self.mmgTasks)
+    concurrent.futures.wait(self.reducerTasks)
+
+    self.threadPool.shutdown(wait=True, cancel_futures=False)
+
+    print(" == DONE == ")
+    print(f"{len(self.mmgTasks)} + {len(self.reducerTasks)}")
+    print(f"{len(self.reducerQueue)}")
 
     # After all MMGs and reducers, there should be one mosaic that remains to be reduced that cannot
     # be reduced with anything else.  This is the final result:
@@ -219,12 +240,12 @@ class MosaicWorker:
     #   for d in self.allRenderedMosaics:
     #     d["image"] = "data:image/png;base64," + base64.b64encode(d["image"]).decode("utf-8")
     #   return self.allRenderedMosaics
-    
+    print(len(self.reducerQueue))
     if len(self.reducerQueue) == 1:
       mosaicImage_buffer = self.reducerQueue[0]["mosaicImage"]
       mosaicImage_b64 = base64.b64encode(mosaicImage_buffer).decode("utf-8")
       return [{"image": "data:image/png;base64," + mosaicImage_b64}]
-
+  
     
     # Otherwise, we have some sort of an error:
     raise Exception("No mosaics were available after all threads completed all of the work.  (Did every MMG fail?)")

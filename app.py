@@ -123,7 +123,7 @@ async def POST_makeMosaic():
             if "disabled" not in reducers[id]:
                 worker.addReducer( reducers[id] )
 
-        result = await worker.createMosaic()
+        result = worker.createMosaic()
         return jsonify(result)
 
     except KeyError as e:
