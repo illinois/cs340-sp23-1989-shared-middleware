@@ -215,8 +215,8 @@ async def GET_testMosaic():
             worker.addReducer( reducer )        
 
     try:
-        await worker.testMosaic()
-        await worker.testReduction(imgA, imgB)
+        worker.testMosaic()
+        worker.testReduction(imgA, imgB)
 
         return jsonify([])
     except Exception as e:

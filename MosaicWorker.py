@@ -3,10 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 import random
 import base64
-# import httpx
-
-# limits = httpx.Limits(max_keepalive_connections=1000, max_connections=None, keepalive_expiry=30)
-# client = httpx.AsyncClient(limits=limits, timeout=15)
+import concurrent
 
 class MosaicWorker:
   def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio, socketio_filter = ""):
@@ -224,17 +221,10 @@ class MosaicWorker:
        mmgFuture = self.threadPool.submit(self.awaitMMG(mmg))
        self.mmgTasks.append(mmgFuture)
 
-    #await asyncio.gather(*self.mmgTasks)
-    #await asyncio.gather(*self.reducerTasks)
-    import concurrent
     concurrent.futures.wait(self.mmgTasks)
     concurrent.futures.wait(self.reducerTasks)
 
     self.threadPool.shutdown(wait=True, cancel_futures=False)
-
-    print(" == DONE == ")
-    print(f"{len(self.mmgTasks)} + {len(self.reducerTasks)}")
-    print(f"{len(self.reducerQueue)}")
 
     # After all MMGs and reducers, there should be one mosaic that remains to be reduced that cannot
     # be reduced with anything else.  This is the final result:
@@ -249,31 +239,32 @@ class MosaicWorker:
       mosaicImage_b64 = base64.b64encode(mosaicImage_buffer).decode("utf-8")
       return [{"image": "data:image/png;base64," + mosaicImage_b64}]
   
-    
     # Otherwise, we have some sort of an error:
     raise Exception("No mosaics were available after all threads completed all of the work.  (Did every MMG fail?)")
 
-  async def testMosaic(self):
+  def testMosaic(self):
     if len(self.mmgsAvailable) == 0:
       raise Exception("No MMGs are available for this author.")
 
     self.disableReduce = True
     for mmg in self.mmgsAvailable:
-      mmgTask = asyncio.create_task(self.awaitMMG(mmg))
-      self.mmgTasks.append(mmgTask)
+       mmgFuture = self.threadPool.submit(self.awaitMMG(mmg))
+       self.mmgTasks.append(mmgFuture)
 
-    await asyncio.gather(*self.mmgTasks)
+    concurrent.futures.wait(self.mmgTasks)
     return []
 
-  async def testReduction(self, mosaic1, mosaic2):
+  def testReduction(self, mosaic1, mosaic2):
     if len(self.reducersAvailable) == 0:
       raise Exception("No reducers are available for this author.")
     
     m1 = { "id": "A", "mosaicImage": mosaic1, "tiles": -1 }
     m2 = { "id": "B", "mosaicImage": mosaic2, "tiles": -1 }
 
-    reducerTask = asyncio.create_task(self.awaitReducer(m1, m2))
-    self.reducerTasks.append(reducerTask)
+    reducerFuture = self.threadPool.submit(self.awaitReducer(m1, m2))
+    self.reducerTasks.append(reducerFuture)
 
-    await asyncio.gather(*self.reducerTasks)
+    concurrent.futures.wait(self.reducerTasks)
+    self.threadPool.shutdown(wait=True, cancel_futures=False)
+
     return []
