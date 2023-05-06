@@ -67,7 +67,9 @@
         {% for author in data.keys() %}
         <tr>
           <th colspan="5">
-            {{ author }}
+            <a href="/singleAuthor?author={{ author | quote_plus }}">
+              {{ author }}
+            </a>
           </th>
         </tr>
         {% for server in data[author] %}

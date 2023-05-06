@@ -4,15 +4,18 @@ load_dotenv()
 # import eventlet
 # eventlet.monkey_patch()
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, make_response, render_template, request
 import secrets
 from flask_socketio import SocketIO
 from MosaicWorker import MosaicWorker
+import os 
+from urllib.parse import quote_plus
 
 mmg_servers = {}
 reducers = {}
 
 app = Flask(__name__)
+app.jinja_env.filters['quote_plus'] = lambda u: quote_plus(u)
 if __name__ == '__main__':
     socketio = SocketIO(app, async_mode="eventlet")
 else:
@@ -101,8 +104,9 @@ def PUT_registerReducer():
 @app.route("/makeMosaic", methods=["POST"])
 async def POST_makeMosaic():
     """Route to generate mosaic"""
-    global completed
-    completed = 0
+
+    if os.getenv("ADMIN_PASSCODE") and ("admin" not in request.cookies or request.cookies.get("admin") != os.getenv("ADMIN_PASSCODE")):
+        return jsonify({"error": "This server is currently in admin-only mode. You are unable to add an image."}), 400
 
     try:
         input_file = request.files["image"]
@@ -156,6 +160,68 @@ def GET_serverList():
     return render_template("servers.html", data=servers_by_author)
 
 
+@app.route("/singleAuthor", methods=["GET"])
+def GET_singleAuthor():
+    author = request.args.get("author")
+    return render_template("singleAuthor.html", data={"author": author})
 
-# if __name__ == '__main__':
-#     socketio.run(app, "0.0.0.0", 5000, debug=True)
+@app.route("/admin", methods=["GET"])
+def GET_admin():
+    return render_template("admin.html")
+
+@app.route("/adminEnable", methods=["POST"])
+def POST_adminEnable():
+    cookie = request.form["cookie"]
+    resp = make_response(render_template("admin.html"))
+    resp.set_cookie("admin", cookie)
+    return resp
+
+
+rainbowTest = None
+with open("testFiles/rainbow.png", "rb") as f:
+    rainbowTest = f.read()
+
+imgA = None
+with open("testFiles/A.png", "rb") as f:
+    imgA = f.read()
+
+imgB = None
+with open("testFiles/B.png", "rb") as f:
+    imgB = f.read()
+
+
+@app.route("/testMosaic", methods=["GET"])
+async def GET_testMosaic():
+    author = request.args.get("author")
+
+    worker = MosaicWorker(
+        baseImage = rainbowTest,
+        tilesAcross = 50,
+        renderedTileSize = 10,
+        fileFormat = "PNG",
+        socketio = socketio,
+        socketio_filter = f" {author}",
+    )
+
+    for id in mmg_servers:
+        mmg = mmg_servers[id]
+        if mmg["author"] == author:
+            worker.addMMG( mmg )    
+
+    for id in reducers:
+        reducer = reducers[id]
+        if reducer["author"] == author:
+            worker.addReducer( reducer )        
+
+    try:
+        await worker.testMosaic()
+        await worker.testReduction(imgA, imgB)
+
+        return jsonify([])
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 400
+
+if __name__ == '__main__':
+    socketio.run(app, "0.0.0.0", 5000, debug=False)

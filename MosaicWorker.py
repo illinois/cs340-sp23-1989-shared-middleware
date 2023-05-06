@@ -8,13 +8,14 @@ import base64
 # client = httpx.AsyncClient(limits=limits, timeout=15)
 
 class MosaicWorker:
-  def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio):
+  def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio, socketio_filter = ""):
     self.baseImage = baseImage
     self.tilesAcross = tilesAcross
     self.renderedTileSize = renderedTileSize
     self.fileFormat = fileFormat
     self.socketio = socketio
-
+    self.socketio_filter = socketio_filter
+    
     self.mmgsAvailable = []
     self.reducersAvailable = []
     self.reducerQueue = []
@@ -25,9 +26,12 @@ class MosaicWorker:
     self.mmgCompleted = 0
     self.reducerCompleted = 0
     self.mosaicNextID = 1
+    self.expectedMosaics = -1   # Always (2*MG - 1) mosaics w/ reductions; start with -1 and always add 2.
+    self.disableReduce = False
 
   def addMMG(self, mmg):
     self.mmgsAvailable.append(mmg)
+    self.expectedMosaics += 2
 
   def addReducer(self, reducer):
     self.reducersAvailable.append(reducer)
@@ -82,7 +86,7 @@ class MosaicWorker:
       "description": description,
       "tiles": tiles,
     }
-    self.socketio.emit("mosaic", mosaicInfo)
+    self.socketio.emit("mosaic" + self.socketio_filter, mosaicInfo)
 
 
     self.reducerQueue.append({
@@ -90,10 +94,10 @@ class MosaicWorker:
       "id": self.mosaicNextID,
       "tiles": tiles,
     })
-    self.socketio.emit("progress update", str(self.mosaicNextID / self.expectedMosaics))
+    self.socketio.emit("progress update" + self.socketio_filter, str(self.mosaicNextID / self.expectedMosaics))
     self.mosaicNextID = self.mosaicNextID + 1
 
-    if len(self.reducerQueue) >= 2:
+    if len(self.reducerQueue) >= 2 and not self.disableReduce:
       mosaic1 = self.reducerQueue.pop()
       mosaic2 = self.reducerQueue.pop()
 
@@ -203,7 +207,6 @@ class MosaicWorker:
       raise Exception("No MMGs are available on this server.")
 
     random.shuffle(self.mmgsAvailable)
-    self.expectedMosaics = (len(self.mmgsAvailable) * 2) - 1
 
     for mmg in self.mmgsAvailable:
        mmgTask = asyncio.create_task(self.awaitMMG(mmg))
@@ -228,3 +231,28 @@ class MosaicWorker:
     
     # Otherwise, we have some sort of an error:
     raise Exception("No mosaics were available after all threads completed all of the work.  (Did every MMG fail?)")
+
+  async def testMosaic(self):
+    if len(self.mmgsAvailable) == 0:
+      raise Exception("No MMGs are available for this author.")
+
+    self.disableReduce = True
+    for mmg in self.mmgsAvailable:
+      mmgTask = asyncio.create_task(self.awaitMMG(mmg))
+      self.mmgTasks.append(mmgTask)
+
+    await asyncio.gather(*self.mmgTasks)
+    return []
+
+  async def testReduction(self, mosaic1, mosaic2):
+    if len(self.reducersAvailable) == 0:
+      raise Exception("No reducers are available for this author.")
+    
+    m1 = { "id": "A", "mosaicImage": mosaic1, "tiles": -1 }
+    m2 = { "id": "B", "mosaicImage": mosaic2, "tiles": -1 }
+
+    reducerTask = asyncio.create_task(self.awaitReducer(m1, m2))
+    self.reducerTasks.append(reducerTask)
+
+    await asyncio.gather(*self.reducerTasks)
+    return []
