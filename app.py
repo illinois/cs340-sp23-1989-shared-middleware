@@ -7,7 +7,6 @@ load_dotenv()
 # eventlet.monkey_patch()
 
 from flask import Flask, jsonify, make_response, render_template, request
-import secrets
 from flask_socketio import SocketIO
 from MosaicWorker import MosaicWorker
 import os 
@@ -50,7 +49,6 @@ def PUT_addMMG():
         tiles = int(request.form["tileImageCount"]),
     )
 
-    print(f"✔️ Added MMG {name}: {url} by {author}")
     return jsonify(result), 200
 
 
@@ -66,13 +64,10 @@ def PUT_registerReducer():
             return jsonify({"error": error})
 
     result = servers.addReducer(
-        name = request.form["name"],
         url = request.form["url"],
         author = request.form["author"],
-        tiles = int(request.form["tileImageCount"]),
     )
 
-    print(f"✔️ Added reducer: {url} by {author}")
     return jsonify(result), 200
 
 
@@ -92,6 +87,7 @@ async def POST_makeMosaic():
             tilesAcross = int(request.form["tilesAcross"]),
             renderedTileSize = int(request.form["renderedTileSize"]),
             fileFormat = request.form["fileFormat"],
+            servers = servers,
             socketio = socketio,
         )
         for id in servers.mmgs:
@@ -110,7 +106,9 @@ async def POST_makeMosaic():
         return jsonify({"error": "Please upload an image file."}), 400
     
     except Exception as e:
-        print(e)
+        import traceback
+        traceback.print_exc()
+
         return jsonify({"error": str(e)}), 400
 
 
@@ -175,6 +173,7 @@ async def GET_testMosaic():
         renderedTileSize = 10,
         fileFormat = "PNG",
         socketio = socketio,
+        servers = servers,
         socketio_filter = f" {author}",
     )
 

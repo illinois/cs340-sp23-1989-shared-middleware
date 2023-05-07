@@ -1,22 +1,25 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import threading
+from time import sleep
 import requests
 import random
 import base64
 import concurrent
 
 class MosaicWorker:
-  def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio, socketio_filter = ""):
+  def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio, servers, socketio_filter = ""):
     self.baseImage = baseImage
     self.tilesAcross = tilesAcross
     self.renderedTileSize = renderedTileSize
     self.fileFormat = fileFormat
     self.socketio = socketio
+    self.servers = servers
     self.socketio_filter = socketio_filter
     
     self.mmgsAvailable = []
     self.reducersAvailable = []
-    self.reducerQueue = []
+    self.reducerTasks = []
 
     self.mmgTasks = []
     self.reducerTasks = []
@@ -27,7 +30,7 @@ class MosaicWorker:
     self.expectedMosaics = -1   # Always (2*MG - 1) mosaics w/ reductions; start with -1 and always add 2.
     self.disableReduce = False
 
-    self.threadPool = ThreadPoolExecutor(max_workers=8)
+    self.threadPool = ThreadPoolExecutor(max_workers=30)
 
   def addMMG(self, mmg):
     self.mmgsAvailable.append(mmg)
@@ -59,7 +62,7 @@ class MosaicWorker:
       baseWidth, baseHeight = self.getImageSize(baseImage)
       mosaicWidth, mosaicHeight = self.getImageSize(mosaicImage)
     except Exception as e:
-      server["error"] = f"Image Error: {e}"
+      self.servers.updateValue(server, "error", f"Image Error: {e}")
       return False
 
     d = baseWidth / self.tilesAcross
@@ -69,7 +72,7 @@ class MosaicWorker:
     requiredHeight = int(verticalTiles * self.renderedTileSize)
 
     if mosaicWidth != requiredWidth or mosaicHeight != requiredHeight:
-      server["error"] = f"Invalid mosaic image size: required ({requiredWidth} x {requiredHeight}), but mosaic was ({mosaicWidth}, {mosaicHeight})"
+      self.servers.updateValue(server, "error", f"Invalid mosaic image size: required ({requiredWidth} x {requiredHeight}), but mosaic was ({mosaicWidth}, {mosaicHeight})")
       return False
     
     return True
@@ -89,7 +92,7 @@ class MosaicWorker:
     self.socketio.emit("mosaic" + self.socketio_filter, mosaicInfo)
 
 
-    self.reducerQueue.append({
+    self.reducerTasks.append({
       "mosaicImage": mosaicImage,
       "id": self.mosaicNextID,
       "tiles": tiles,
@@ -97,34 +100,21 @@ class MosaicWorker:
     self.socketio.emit("progress update" + self.socketio_filter, str(self.mosaicNextID / self.expectedMosaics))
     self.mosaicNextID = self.mosaicNextID + 1
 
-    if len(self.reducerQueue) >= 2 and not self.disableReduce:
-      mosaic1 = self.reducerQueue.pop()
-      mosaic2 = self.reducerQueue.pop()
+    if len(self.reducerTasks) >= 2 and not self.disableReduce:
+      mosaic1 = self.reducerTasks.pop()
+      mosaic2 = self.reducerTasks.pop()
 
       #reducerTask = asyncio.create_task(self.awaitReducer(mosaic1, mosaic2))
-      reducerTask = self.threadPool.submit(self.awaitReducer(mosaic1, mosaic2))
+      reducerTask = self.threadPool.submit(self.awaitReducer, mosaic1, mosaic2)
       self.reducerTasks.append(reducerTask)
      
 
   def sendRequest2(self, url, files):
-    return requests.post(
+    resp = requests.post(
       f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
       files = files
     )
-
-
-  async def sendRequest(self, url, files):
-    # return await client.post(
-    #   f"{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}",
-    #   files = files
-    # )
-
-    # return requests.post(
-    #   f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
-    #   files = files
-    # )
-
-    return await asyncio.to_thread(self.sendRequest2, url, files)
+    return resp
 
 
   def awaitReducer(self, mosaic1, mosaic2):
@@ -143,29 +133,25 @@ class MosaicWorker:
     try:
       req = self.sendRequest2(url, files = {"baseImage": self.baseImage, "mosaic1": mosaic1["mosaicImage"], "mosaic2": mosaic2["mosaicImage"]})
     except Exception as e:
-      reducer["disabled"] = True
-      error = f"ConnectionError: {e}"
-    
-    if req:
-      if req.status_code != 200:
-        error = f"HTTP Status {req.status_code}"
-
-      if req.status_code >= 500:
-        reducer["disabled"] = True
-
-      mosaicImage = req.content
-      if not self.validateMosaicImageSize(reducer, self.baseImage, mosaicImage):
-        reducer["disabled"] = True
-        error = reducer["error"]
-
-    if error or not req:
-      reducer["error"] = error
+      self.servers.updateValue(reducer, "error", f"ConnectionError: {e}")
+      self.servers.updateValue(reducer, "disabled", True)
       # Remove bad reducer and retry:
       self.reducersAvailable.remove(reducer)
-      reducerFuture = self.threadPool.submit(self.awaitReducer(mosaic1, mosaic2))
-      self.reducerTasks.append(reducerFuture)
-      return
+      return self.awaitReducer(mosaic1, mosaic2)
+    
+    if req.status_code != 200:
+      self.servers.updateValue(reducer, "error", f"HTTP Status {req.status_code}")
+      self.servers.updateValue(reducer, "disabled", True)
+      # Remove bad reducer and retry:
+      self.reducersAvailable.remove(reducer)
+      return self.awaitReducer(mosaic1, mosaic2)
 
+    mosaicImage = req.content
+    if not self.validateMosaicImageSize(reducer, self.baseImage, mosaicImage):
+      self.servers.updateValue(reducer, "disabled", True)
+      # Remove bad reducer and retry:
+      self.reducersAvailable.remove(reducer)
+      return self.awaitReducer(mosaic1, mosaic2)
 
 
     self.processRenderedMosaic(
@@ -175,7 +161,7 @@ class MosaicWorker:
     )
 
     self.reducerCompleted = self.reducerCompleted + 1
-    reducer['count'] += 1
+    self.servers.updateCount(reducer)
 
 
   def awaitMMG(self, mmg):
@@ -187,16 +173,16 @@ class MosaicWorker:
     try:
       req = self.sendRequest2(url, files={"image": self.baseImage})
     except Exception as e:
-      mmg["error"] = f"ConnectionError: {e}"
-      mmg["disabled"] = True
+      self.servers.updateValue(mmg, "error", f"ConnectionError: {e}")
+      self.servers.updateValue(mmg, "disabled", True)
       self.expectedMosaics -= 2
       return
 
     if req.status_code >= 500:
-      mmg["disabled"] = True
+      self.servers.updateValue(mmg, "disabled", True)
 
     if req.status_code != 200:
-      mmg["error"] = f"HTTP Status {req.status_code}"
+      self.servers.updateValue(mmg, "error", f"HTTP Status {req.status_code}")
       self.expectedMosaics -= 2
       return
     
@@ -208,7 +194,7 @@ class MosaicWorker:
 
     self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"])
     self.mmgCompleted = self.mmgCompleted + 1
-    mmg['count'] += 1
+    self.servers.updateCount(mmg)
 
 
   def createMosaic(self):
@@ -218,13 +204,13 @@ class MosaicWorker:
     random.shuffle(self.mmgsAvailable)
 
     for mmg in self.mmgsAvailable:
-       mmgFuture = self.threadPool.submit(self.awaitMMG(mmg))
+       mmgFuture = self.threadPool.submit(self.awaitMMG, mmg)
        self.mmgTasks.append(mmgFuture)
 
     concurrent.futures.wait(self.mmgTasks)
     concurrent.futures.wait(self.reducerTasks)
 
-    self.threadPool.shutdown(wait=True, cancel_futures=False)
+    self.threadPool.shutdown()
 
     # After all MMGs and reducers, there should be one mosaic that remains to be reduced that cannot
     # be reduced with anything else.  This is the final result:
@@ -233,9 +219,9 @@ class MosaicWorker:
     #   for d in self.allRenderedMosaics:
     #     d["image"] = "data:image/png;base64," + base64.b64encode(d["image"]).decode("utf-8")
     #   return self.allRenderedMosaics
-    print(len(self.reducerQueue))
-    if len(self.reducerQueue) == 1:
-      mosaicImage_buffer = self.reducerQueue[0]["mosaicImage"]
+    print(len(self.reducerTasks))
+    if len(self.reducerTasks) == 1:
+      mosaicImage_buffer = self.reducerTasks[0]["mosaicImage"]
       mosaicImage_b64 = base64.b64encode(mosaicImage_buffer).decode("utf-8")
       return [{"image": "data:image/png;base64," + mosaicImage_b64}]
   
@@ -248,7 +234,7 @@ class MosaicWorker:
 
     self.disableReduce = True
     for mmg in self.mmgsAvailable:
-       mmgFuture = self.threadPool.submit(self.awaitMMG(mmg))
+       mmgFuture = self.threadPool.submit(self.awaitMMG, mmg)
        self.mmgTasks.append(mmgFuture)
 
     concurrent.futures.wait(self.mmgTasks)
@@ -261,7 +247,7 @@ class MosaicWorker:
     m1 = { "id": "A", "mosaicImage": mosaic1, "tiles": -1 }
     m2 = { "id": "B", "mosaicImage": mosaic2, "tiles": -1 }
 
-    reducerFuture = self.threadPool.submit(self.awaitReducer(m1, m2))
+    reducerFuture = self.threadPool.submit(self.awaitReducer, m1, m2)
     self.reducerTasks.append(reducerFuture)
 
     concurrent.futures.wait(self.reducerTasks)

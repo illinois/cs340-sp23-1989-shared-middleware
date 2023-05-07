@@ -1,26 +1,41 @@
 
 
 import secrets
-
+import pymongo
 
 class ServersCollection:
   def __init__(self):
-    self.mmgs = []
-    self.reducers = []
+    self.mongodb = pymongo.MongoClient()
+    self.collection_mmgs = self.mongodb["1989"]["mmgs"]
+    self.collection_reducers = self.mongodb["1989"]["reducers"]
+
+    self.mmgs = {}
+    for mmg in self.collection_mmgs.find({}):
+      print(mmg)
+      self.mmgs[mmg["id"]] = mmg
+
+    self.reducers = {}
+    for reducer in self.collection_reducers.find({}):
+      print(reducer)
+      self.reducers[reducer["id"]] = reducer
+
 
   def addMMG(self, name, url, author, tiles):
     id = secrets.token_hex(20)
     count = 0
-        
+    isUpdate = False
+    
     # Check for existing MMG with same URL:
     for existingId in self.mmgs:
       if self.mmgs[existingId]["url"] == url:
         id = existingId
         count = self.mmgs[existingId]["count"]
+        isUpdate = True
         break
 
-    self.mmgs[id] = {
+    mmg = {
       "id": id,
+      "type": "mmg",
       "name": name,
       "url": url,
       "author": author,
@@ -28,26 +43,60 @@ class ServersCollection:
       "count": count,
     }
 
-    return self.mmgs[id]
+    self.mmgs[id] = mmg
+    if isUpdate:
+      self.collection_mmgs.replace_one({"id": id}, mmg)
+    else:
+      self.collection_mmgs.insert_one(mmg)
+    
+    print(f"✔️ Added MMG {name}: {url} by {author}")
+    return mmg
+
 
   def addReducer(self, url, author):
     id = secrets.token_hex(20)
     count = 0
+    isUpdate = False
 
     for existingId in self.reducers:
       if self.reducers[existingId]["url"] == url:
         id = existingId
         count = self.reducers[existingId]["count"]
+        isUpdate = True
         break
 
-    self.reducers[id] = {
+    reducer = self.reducers[id] = {
       "id": id,
+      "type": "reducer",
       "url": url,
       "author": author,
-      "type": "reducer",
       "count": count,
     }
 
+
+    if isUpdate:
+      self.collection_reducers.replace_one({"id": id}, reducer)
+    else:
+      self.collection_reducers.insert_one(reducer)
+
+    print(f"✔️ Added reducer: {url} by {author}")
     return self.reducers[id]
 
-  
+
+  def saveUpdate(self, server, key):
+    updateQuery = {"$set": { key: server[key] }}
+    print(updateQuery)
+
+    if server["type"] == "mmg":
+      self.collection_mmgs.update_one({"id": server["id"]}, updateQuery)
+    else:
+      self.collection_reducers.update_one({"id": server["id"]}, updateQuery)
+
+
+  def updateCount(self, server):
+    server["count"] += 1
+    self.saveUpdate(server, "count")
+
+  def updateValue(self, server, key, value):
+    server[key] = value
+    self.saveUpdate(server, key)

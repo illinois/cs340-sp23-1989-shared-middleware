@@ -76,7 +76,7 @@
         <tr class="server-details {% if "disabled" in server %}table-danger{% endif %}">
           <td>
             {% if "disabled" in server %}❌{% endif %}
-            {% if "type" in server %}
+            {% if server["type"] == "reducer" %}
             <b>Mosaic Reducer</b>
             {% else %}
             <b>MMG:</b> {{ server["name"] }}
