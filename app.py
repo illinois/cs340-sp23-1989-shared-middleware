@@ -9,14 +9,10 @@ from MosaicWorker import MosaicWorker
 import os 
 from urllib.parse import quote_plus
 
-
 app = Flask(__name__)
 app.jinja_env.filters['quote_plus'] = lambda u: quote_plus(u)
 
-if __name__ == '__main__':
-    socketio = SocketIO(app, async_mode="eventlet")
-else:
-    socketio = SocketIO(app)
+socketio = SocketIO(app)
 
 useDB = False
 if os.getenv("ADMIN_PASSCODE"):
@@ -242,8 +238,3 @@ async def GET_testMosaic():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
-if __name__ == '__main__':
-    port = 5000
-    if os.getenv("FLASK_RUN_PORT"):
-        port = int(os.getenv("FLASK_RUN_PORT"))
-    socketio.run(app, "0.0.0.0", port, debug=False)
