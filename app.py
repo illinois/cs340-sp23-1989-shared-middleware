@@ -3,9 +3,6 @@ from dotenv import load_dotenv
 from ServersCollection import ServersCollection
 load_dotenv()
 
-# import eventlet
-# eventlet.monkey_patch()
-
 from flask import Flask, jsonify, make_response, render_template, request
 from flask_socketio import SocketIO
 from MosaicWorker import MosaicWorker
