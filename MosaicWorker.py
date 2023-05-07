@@ -1,10 +1,6 @@
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
-import threading
-from time import sleep
 import requests
 import random
-import base64
 import concurrent
 import queue
 
