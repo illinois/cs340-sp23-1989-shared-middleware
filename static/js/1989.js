@@ -45,6 +45,7 @@ let doSubmit = function () {
   let tilesAcross = document.getElementById("tilesAcross").value;
   let renderedTileSize = document.getElementById("renderedTileSize").value;
   let fileFormat = document.getElementById("fileFormat").value;
+  const jsConfetti = new JSConfetti()
 
   var data = new FormData();
   data.append("image", f);
@@ -63,6 +64,10 @@ let doSubmit = function () {
       e.innerHTML =
         `<div class="alert alert-danger mb-3" role="alert"><h3>Mosaic Generation Error</h3>${json.error}</div>`
         + e.innerHTML;
+      jsConfetti.addConfetti({emojis:['😢'],confettiNumber:10});
+    } else {
+      setTimeout(() => {
+        jsConfetti.addConfetti();}, 200)
     }
   });
 };
