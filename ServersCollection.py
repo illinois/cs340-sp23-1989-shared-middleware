@@ -11,12 +11,10 @@ class ServersCollection:
 
     self.mmgs = {}
     for mmg in self.collection_mmgs.find({}):
-      print(mmg)
       self.mmgs[mmg["id"]] = mmg
 
     self.reducers = {}
     for reducer in self.collection_reducers.find({}):
-      print(reducer)
       self.reducers[reducer["id"]] = reducer
 
 
@@ -57,12 +55,14 @@ class ServersCollection:
     id = secrets.token_hex(20)
     count = 0
     isUpdate = False
+    verification = None
 
     for existingId in self.reducers:
       if self.reducers[existingId]["url"] == url:
         id = existingId
         count = self.reducers[existingId]["count"]
         isUpdate = True
+        verification = self.reducers[existingId]["verification"]
         break
 
     reducer = self.reducers[id] = {
@@ -71,6 +71,7 @@ class ServersCollection:
       "url": url,
       "author": author,
       "count": count,
+      "verification": verification,
     }
 
 
@@ -85,7 +86,6 @@ class ServersCollection:
 
   def saveUpdate(self, server, key):
     updateQuery = {"$set": { key: server[key] }}
-    print(updateQuery)
 
     if server["type"] == "mmg":
       self.collection_mmgs.update_one({"id": server["id"]}, updateQuery)

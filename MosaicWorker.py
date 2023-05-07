@@ -141,9 +141,15 @@ class MosaicWorker:
       self.reducersAvailable.remove(reducer)
       return self.awaitReducer(mosaic1, mosaic2)
     
-    if req.status_code != 200:
+    if req.status_code >= 500:
       self.servers.updateValue(reducer, "error", f"HTTP Status {req.status_code}")
       self.servers.updateValue(reducer, "disabled", True)
+      # Remove bad reducer and retry:
+      self.reducersAvailable.remove(reducer)
+      return self.awaitReducer(mosaic1, mosaic2)
+        
+    if req.status_code != 200:
+      self.servers.updateValue(reducer, "error", f"HTTP Status {req.status_code}")
       # Remove bad reducer and retry:
       self.reducersAvailable.remove(reducer)
       return self.awaitReducer(mosaic1, mosaic2)
@@ -204,10 +210,9 @@ class MosaicWorker:
   def createMosaic(self):
     if len(self.mmgsAvailable) == 0:
       raise Exception("No MMGs are available on this server.")
-    
+
     for reducer in self.reducersAvailable:
       self.reducerBlockingQueue.put(reducer)
-    print(f"QUEUE LEN: {self.reducerBlockingQueue.qsize()}")
     
     random.shuffle(self.mmgsAvailable)
     for mmg in self.mmgsAvailable:
@@ -215,6 +220,10 @@ class MosaicWorker:
        self.mmgTasks.append(mmgFuture)
 
     concurrent.futures.wait(self.mmgTasks)
+
+    if len(self.reducersAvailable) == 0:
+      raise Exception("No reducers are available on this server.")
+
     concurrent.futures.wait(self.reducerTasks)
 
     self.threadPool.shutdown()
@@ -248,14 +257,22 @@ class MosaicWorker:
     concurrent.futures.wait(self.mmgTasks)
     return []
 
-  def testReduction(self, mosaic1, mosaic2):
+  def testReduction(self, mosaic1, mosaic2, mosaic3, mosaic4):
     if len(self.reducersAvailable) == 0:
       raise Exception("No reducers are available for this author.")
-    
+
+    for reducer in self.reducersAvailable:
+      self.reducerBlockingQueue.put(reducer)
+
     m1 = { "id": "A", "mosaicImage": mosaic1, "tiles": -1 }
     m2 = { "id": "B", "mosaicImage": mosaic2, "tiles": -1 }
+    m3 = { "id": "C", "mosaicImage": mosaic3, "tiles": -1 }
+    m4 = { "id": "D", "mosaicImage": mosaic4, "tiles": -1 }
 
     reducerFuture = self.threadPool.submit(self.awaitReducer, m1, m2)
+    self.reducerTasks.append(reducerFuture)
+
+    reducerFuture = self.threadPool.submit(self.awaitReducer, m3, m4)
     self.reducerTasks.append(reducerFuture)
 
     concurrent.futures.wait(self.reducerTasks)

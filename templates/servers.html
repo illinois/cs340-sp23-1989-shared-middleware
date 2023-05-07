@@ -78,6 +78,14 @@
             {% if "disabled" in server %}❌{% endif %}
             {% if server["type"] == "reducer" %}
             <b>Mosaic Reducer</b>
+              {% if "verification" in server %}
+                {% if server["verification"] == "GOOD" %}
+                <b style="color: darkgreen">(Verified)</b>
+                {% endif %}
+                {% if server["verification"] == "BROKEN" %}
+                ❌
+                {% endif %}
+              {% endif %}
             {% else %}
             <b>MMG:</b> {{ server["name"] }}
             {% endif %}

@@ -37,9 +37,10 @@
     </div>
   </header>
   <main class="content container flex-grow-1 mb-2">
+    <h3>1989 Mosaics (Shared Course-Wide Middleware) -- v6.1.0</h3>
+    {% if data.disableInterface == True %}
     <form enctype="multipart/form-data" onsubmit="doSubmit(); return false;">
       <div class="form-group">
-        <h3>1989 Mosaics (Shared Course-Wide Middleware) -- v6.0.0</h3>
         <label for="image">Base Image:</label>
         <input type="file" class="form-control" id="image" name="image" />
         <div class="row my-3">
@@ -63,6 +64,7 @@
       <button type="submit" class="btn btn-primary">Create Mosaics!</button>
     </form>
     <br>
+    {% endif %}
     <div class="progress" style="height: 25px;">
       <div class="progress-bar progress-bar-striped progress-bar-animated" id="progbar" role="progressbar"
         style="width: 0%;" aria-valuenow="0" aria-valuemin="100" aria-valuemax="100">0%</div>

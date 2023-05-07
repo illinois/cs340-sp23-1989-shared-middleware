@@ -6,3 +6,4 @@ flask_socketio
 httpx
 Pillow
 eventlet
+pymongo

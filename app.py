@@ -27,7 +27,15 @@ servers = ServersCollection()
 @app.route("/", methods=["GET"])
 def GET_index():
     """Route for "/" (frontend)"""
-    return render_template("index.html")
+    
+    disableInterface = False
+    if os.getenv("ADMIN_PASSCODE"):
+        disableInterface = True
+
+        if "admin" not in request.cookies or request.cookies.get("admin") != os.getenv("ADMIN_PASSCODE"):
+            disableInterface = False
+
+    return render_template("index.html", data={"disableInterface": disableInterface})
 
 
 @app.route("/addMMG", methods=["PUT"])
@@ -136,7 +144,35 @@ def GET_serverList():
 @app.route("/singleAuthor", methods=["GET"])
 def GET_singleAuthor():
     author = request.args.get("author")
-    return render_template("singleAuthor.html", data={"author": author})
+    isAdmin = False
+    if os.getenv("ADMIN_PASSCODE") and "admin" in request.cookies and request.cookies.get("admin") == os.getenv("ADMIN_PASSCODE"):
+        isAdmin = True
+
+    return render_template("singleAuthor.html", data={"author": author, "isAdmin": isAdmin})
+
+
+def verify(how):
+    if os.getenv("ADMIN_PASSCODE") and ("admin" not in request.cookies or request.cookies.get("admin") != os.getenv("ADMIN_PASSCODE")):
+        return jsonify({"error": "This server is currently in admin-only mode. You are unable to add an image."}), 400
+
+    author = request.args.get("author")
+    for key in servers.reducers:
+        reducer = servers.reducers[key]
+        if author == reducer["author"]:
+            servers.updateValue(reducer, "verification", how)
+            return jsonify({"verification": how})
+            
+    return jsonify({"error": "author not found"})
+
+@app.route("/verify_GOOD", methods=["GET"])
+def GET_verify_GOOD():
+    return verify("GOOD")
+
+@app.route("/verify_BROKEN", methods=["GET"])
+def GET_verify_BROKEN():
+    return verify("BROKEN")
+
+
 
 @app.route("/admin", methods=["GET"])
 def GET_admin():
@@ -161,6 +197,14 @@ with open("testFiles/A.png", "rb") as f:
 imgB = None
 with open("testFiles/B.png", "rb") as f:
     imgB = f.read()
+
+imgC = None
+with open("testFiles/C.png", "rb") as f:
+    imgC = f.read()
+
+imgD = None
+with open("testFiles/D.png", "rb") as f:
+    imgD = f.read()
 
 
 @app.route("/testMosaic", methods=["GET"])
@@ -189,7 +233,7 @@ async def GET_testMosaic():
 
     try:
         worker.testMosaic()
-        worker.testReduction(imgA, imgB)
+        worker.testReduction(imgA, imgB, imgC, imgD)
 
         return jsonify([])
     except Exception as e:
