@@ -254,6 +254,9 @@ class MosaicWorker:
        self.mmgTasks.append(mmgFuture)
 
     concurrent.futures.wait(self.mmgTasks)
+    # for t in concurrent.futures.as_completed(self.mmgTasks):
+    #   print(t)
+
     return []
 
   def testReduction(self, mosaic1, mosaic2, mosaic3, mosaic4):
@@ -275,6 +278,6 @@ class MosaicWorker:
     self.reducerTasks.append(reducerFuture)
 
     concurrent.futures.wait(self.reducerTasks)
-    self.threadPool.shutdown(wait=True, cancel_futures=False)
+    self.threadPool.shutdown()
 
     return []
