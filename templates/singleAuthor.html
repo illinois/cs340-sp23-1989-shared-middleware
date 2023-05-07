@@ -39,6 +39,13 @@
   <main class="content container flex-grow-1 mb-2">
     <h3>Mosaics by {{data.author}}</h3>
     <hr>
+    {% if data.isAdmin %}
+    <div id="verify">
+      <button type="button" class="btn btn-success" onclick="javascript:verify('GOOD')">Validate as Working</button>
+      <button type="button" class="btn btn-danger" style="float: right" onclick="javascript:verify('BROKEN')">Validate as Broken</button>
+    </div>
+    <hr style="clear: both;">
+    {% endif %}
     <div id="output">
       <div id="mosaics" class="row"></div>
       <hr>
