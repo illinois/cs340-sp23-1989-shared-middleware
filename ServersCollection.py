@@ -4,18 +4,21 @@ import secrets
 import pymongo
 
 class ServersCollection:
-  def __init__(self):
-    self.mongodb = pymongo.MongoClient()
-    self.collection_mmgs = self.mongodb["1989"]["mmgs"]
-    self.collection_reducers = self.mongodb["1989"]["reducers"]
-
+  def __init__(self, usingMongo):
+    self.usingMongo = usingMongo
     self.mmgs = {}
-    for mmg in self.collection_mmgs.find({}):
-      self.mmgs[mmg["id"]] = mmg
-
     self.reducers = {}
-    for reducer in self.collection_reducers.find({}):
-      self.reducers[reducer["id"]] = reducer
+
+    if self.usingMongo:
+      self.mongodb = pymongo.MongoClient()
+      self.collection_mmgs = self.mongodb["1989"]["mmgs"]
+      self.collection_reducers = self.mongodb["1989"]["reducers"]
+
+      for mmg in self.collection_mmgs.find({}):
+        self.mmgs[mmg["id"]] = mmg
+
+      for reducer in self.collection_reducers.find({}):
+        self.reducers[reducer["id"]] = reducer
 
 
   def addMMG(self, name, url, author, tiles):
@@ -42,10 +45,11 @@ class ServersCollection:
     }
 
     self.mmgs[id] = mmg
-    if isUpdate:
-      self.collection_mmgs.replace_one({"id": id}, mmg)
-    else:
-      self.collection_mmgs.insert_one(mmg)
+    if self.usingMongo:
+      if isUpdate:
+        self.collection_mmgs.replace_one({"id": id}, mmg)
+      else:
+        self.collection_mmgs.insert_one(mmg)
     
     print(f"✔️ Added MMG {name}: {url} by {author}")
     return mmg
@@ -74,19 +78,21 @@ class ServersCollection:
       "verification": verification,
     }
 
-
-    if isUpdate:
-      self.collection_reducers.replace_one({"id": id}, reducer)
-    else:
-      self.collection_reducers.insert_one(reducer)
+    if self.usingMongo:
+      if isUpdate:
+        self.collection_reducers.replace_one({"id": id}, reducer)
+      else:
+        self.collection_reducers.insert_one(reducer)
 
     print(f"✔️ Added reducer: {url} by {author}")
     return self.reducers[id]
 
 
   def saveUpdate(self, server, key):
-    updateQuery = {"$set": { key: server[key] }}
+    if not self.usingMongo:
+      return
 
+    updateQuery = {"$set": { key: server[key] }}
     if server["type"] == "mmg":
       self.collection_mmgs.update_one({"id": server["id"]}, updateQuery)
     else:

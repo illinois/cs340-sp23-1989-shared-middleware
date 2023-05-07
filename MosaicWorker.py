@@ -222,6 +222,8 @@ class MosaicWorker:
       raise Exception("No reducers are available on this server.")
 
     concurrent.futures.wait(self.reducerTasks)
+    while len(self.reducersAvailable) > 0 and self.mosaicNextID < self.expectedMosaics:
+      concurrent.futures.wait(self.reducerTasks)
 
     self.threadPool.shutdown()
 

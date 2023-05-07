@@ -18,18 +18,22 @@ if __name__ == '__main__':
 else:
     socketio = SocketIO(app)
 
-servers = ServersCollection()
+useDB = False
+if os.getenv("ADMIN_PASSCODE"):
+    useDB = True
+
+servers = ServersCollection(useDB)
 
 
 @app.route("/", methods=["GET"])
 def GET_index():
     """Route for "/" (frontend)"""
-    
+
     disableInterface = False
     if os.getenv("ADMIN_PASSCODE"):
         disableInterface = True
 
-        if "admin" not in request.cookies or request.cookies.get("admin") != os.getenv("ADMIN_PASSCODE"):
+        if "admin" in request.cookies and request.cookies.get("admin") == os.getenv("ADMIN_PASSCODE"):
             disableInterface = False
 
     return render_template("index.html", data={"disableInterface": disableInterface})

@@ -38,7 +38,7 @@
   </header>
   <main class="content container flex-grow-1 mb-2">
     <h3>1989 Mosaics (Shared Course-Wide Middleware) -- v6.1.0</h3>
-    {% if data.disableInterface == True %}
+    {% if not data.disableInterface %}
     <form enctype="multipart/form-data" onsubmit="doSubmit(); return false;">
       <div class="form-group">
         <label for="image">Base Image:</label>
