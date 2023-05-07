@@ -80,7 +80,7 @@ class MosaicWorker:
     return True
 
 
-  def processRenderedMosaic(self, mosaicImage, description, tiles):
+  def processRenderedMosaic(self, mosaicImage, description, tiles, mosaics):
     """Stores a rendered mosaic, queueing up reduction or further reduction if possible."""
     print(f"[MosaicWorker]: --> Storing mosaic result as #{self.mosaicNextID}")
     print(f"[MosaicWorker]:     Bytes: {len(mosaicImage)}")
@@ -90,6 +90,7 @@ class MosaicWorker:
       "id": self.mosaicNextID,
       "description": description,
       "tiles": tiles,
+      "mosaics": mosaics,
     }
     self.socketio.emit("mosaic" + self.socketio_filter, mosaicInfo)
 
@@ -98,6 +99,7 @@ class MosaicWorker:
       "mosaicImage": mosaicImage,
       "id": self.mosaicNextID,
       "tiles": tiles,
+      "mosaics": mosaics,      
     })
     self.socketio.emit("progress update" + self.socketio_filter, str(self.mosaicNextID / self.expectedMosaics))
     self.mosaicNextID = self.mosaicNextID + 1
@@ -106,7 +108,6 @@ class MosaicWorker:
       mosaic1 = self.reductionJobs.pop()
       mosaic2 = self.reductionJobs.pop()
 
-      #reducerTask = asyncio.create_task(self.awaitReducer(mosaic1, mosaic2))
       reducerTask = self.threadPool.submit(self.awaitReducer, mosaic1, mosaic2)
       self.reducerTasks.append(reducerTask)
      
@@ -130,7 +131,6 @@ class MosaicWorker:
     print(f'[MosaicWorker]:   url: {url}, queue: {self.reducerBlockingQueue.qsize()}')
 
 
-    error = None
     req = None
     try:
       req = self.sendRequest2(url, files = {"baseImage": self.baseImage, "mosaic1": mosaic1["mosaicImage"], "mosaic2": mosaic2["mosaicImage"]})
@@ -167,7 +167,8 @@ class MosaicWorker:
     self.processRenderedMosaic(
       mosaicImage,
       f'Reduction of #{mosaic1["id"]} and #{mosaic2["id"]} by {reducer["author"]}',
-      mosaic1["tiles"] + mosaic2["tiles"]
+      mosaic1["tiles"] + mosaic2["tiles"],
+      mosaic1["mosaics"] + mosaic2["mosaics"],
     )
 
     self.reducerCompleted = self.reducerCompleted + 1
@@ -202,7 +203,7 @@ class MosaicWorker:
       self.expectedMosaics -= 2
       return
 
-    self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"])
+    self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"], 1)
     self.mmgCompleted = self.mmgCompleted + 1
     self.servers.updateCount(mmg)
 
@@ -264,10 +265,10 @@ class MosaicWorker:
     for reducer in self.reducersAvailable:
       self.reducerBlockingQueue.put(reducer)
 
-    m1 = { "id": "A", "mosaicImage": mosaic1, "tiles": -1 }
-    m2 = { "id": "B", "mosaicImage": mosaic2, "tiles": -1 }
-    m3 = { "id": "C", "mosaicImage": mosaic3, "tiles": -1 }
-    m4 = { "id": "D", "mosaicImage": mosaic4, "tiles": -1 }
+    m1 = { "id": "A", "mosaicImage": mosaic1, "tiles": -1, "mosaics": -1 }
+    m2 = { "id": "B", "mosaicImage": mosaic2, "tiles": -1, "mosaics": -1 }
+    m3 = { "id": "C", "mosaicImage": mosaic3, "tiles": -1, "mosaics": -1 }
+    m4 = { "id": "D", "mosaicImage": mosaic4, "tiles": -1, "mosaics": -1 }
 
     reducerFuture = self.threadPool.submit(self.awaitReducer, m1, m2)
     self.reducerTasks.append(reducerFuture)

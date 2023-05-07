@@ -14,13 +14,17 @@ socket.on(`mosaic ${author}`, function (mosaicInfo) {
     html += `<div class="col-2 mb-2">`;
     html += `<img src="${imageUrl}" class="img-fluid">`
     html += `<div style="font-size: 12px">`;
-    html += `<b>Mosaic #${mosaicInfo.id}</b> (${mosaicInfo.tiles} tiles)<br>`;
+    html += `<b>Mosaic #${mosaicInfo.id}</b> (${mosaicInfo.tiles} tiles`;
+    if (mosaicInfo.mosaics > 1) {
+      html += `; ${mosaicInfo.mosaics} mosaics)<br>`;
+    } else {
+      html += `)<br>`;
+    }
     html += `<i>${mosaicInfo.description}<i>`;
     html += `</div>`;
     html += `</div>`;
   } else {
     e = document.getElementById("reduction");
-    sid = mosaicInfo.sid;
 
     html += `<div class="col-2 mb-2">`;
     html += `<img src="${imageUrl}" class="img-fluid">`
