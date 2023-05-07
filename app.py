@@ -1,4 +1,6 @@
 from dotenv import load_dotenv
+
+from ServersCollection import ServersCollection
 load_dotenv()
 
 # import eventlet
@@ -11,8 +13,6 @@ from MosaicWorker import MosaicWorker
 import os 
 from urllib.parse import quote_plus
 
-mmg_servers = {}
-reducers = {}
 
 app = Flask(__name__)
 app.jinja_env.filters['quote_plus'] = lambda u: quote_plus(u)
@@ -21,6 +21,8 @@ if __name__ == '__main__':
     socketio = SocketIO(app, async_mode="eventlet")
 else:
     socketio = SocketIO(app)
+
+servers = ServersCollection()
 
 
 @app.route("/", methods=["GET"])
@@ -41,30 +43,15 @@ def PUT_addMMG():
             return jsonify({"error": error})
 
     # Add the MMG:
-    name = request.form["name"]
-    url = request.form["url"]
-    author = request.form["author"]
-    tileImageCount = int(request.form["tileImageCount"])
-    id = secrets.token_hex(20)
-    count = 0
+    result = servers.addMMG(
+        name = request.form["name"],
+        url = request.form["url"],
+        author = request.form["author"],
+        tiles = int(request.form["tileImageCount"]),
+    )
 
-    # Check for existing MMG with same URL:
-    for existingId in mmg_servers:
-        if mmg_servers[existingId]["url"] == url:
-            id = existingId
-            count = mmg_servers[existingId]["count"]
-            break
-
-    mmg_servers[id] = {
-        "id": id,
-        "name": name,
-        "url": url,
-        "author": author,
-        "tiles": tileImageCount,
-        "count": count
-    }
     print(f"✔️ Added MMG {name}: {url} by {author}")
-    return "Success :)", 200
+    return jsonify(result), 200
 
 
 @app.route("/registerReducer", methods=["PUT"])
@@ -78,28 +65,15 @@ def PUT_registerReducer():
             print(f"❌ REJECTED /registerReducer: {error}")
             return jsonify({"error": error})
 
+    result = servers.addReducer(
+        name = request.form["name"],
+        url = request.form["url"],
+        author = request.form["author"],
+        tiles = int(request.form["tileImageCount"]),
+    )
 
-    url = request.form["url"]
-    author = request.form["author"]
-    id = secrets.token_hex(20)
-    count = 0
-
-    # Check for existing MMG with same URL:
-    for existingId in reducers:
-        if reducers[existingId]["url"] == url:
-            id = existingId
-            count = reducers[existingId]["count"]
-            break
-
-    reducers[id] = {
-        "id": id,
-        "url": url,
-        "author": author,
-        "type": "reducer",
-        "count": count
-    }
     print(f"✔️ Added reducer: {url} by {author}")
-    return "Success :)", 200
+    return jsonify(result), 200
 
 
 @app.route("/makeMosaic", methods=["POST"])
@@ -120,13 +94,13 @@ async def POST_makeMosaic():
             fileFormat = request.form["fileFormat"],
             socketio = socketio,
         )
-        for id in mmg_servers:
-            if "disabled" not in mmg_servers[id]:
-                worker.addMMG( mmg_servers[id] )
+        for id in servers.mmgs:
+            if "disabled" not in servers.mmgs[id]:
+                worker.addMMG( servers.mmgs[id] )
         
-        for id in reducers:
-            if "disabled" not in reducers[id]:
-                worker.addReducer( reducers[id] )
+        for id in servers.reducers:
+            if "disabled" not in servers.reducers[id]:
+                worker.addReducer( servers.reducers[id] )
 
         result = worker.createMosaic()
         return jsonify(result)
@@ -144,15 +118,15 @@ async def POST_makeMosaic():
 def GET_serverList():
     """Route to get connected servers"""
     servers_by_author = {}
-    for key in mmg_servers:
-        mmg = mmg_servers[key]
+    for key in servers.mmgs:
+        mmg = servers.mmgs[key]
         author = mmg["author"]
         if author not in servers_by_author:
             servers_by_author[author] = []
         servers_by_author[author].append(mmg)
       
-    for key in reducers:
-        reducer = reducers[key]
+    for key in servers.reducers:
+        reducer = servers.reducers[key]
         author = reducer["author"]
         if author not in servers_by_author:
             servers_by_author[author] = []
@@ -204,13 +178,13 @@ async def GET_testMosaic():
         socketio_filter = f" {author}",
     )
 
-    for id in mmg_servers:
-        mmg = mmg_servers[id]
+    for id in servers.mmgs:
+        mmg = servers.mmgs[id]
         if mmg["author"] == author:
             worker.addMMG( mmg )    
 
-    for id in reducers:
-        reducer = reducers[id]
+    for id in servers.reducers:
+        reducer = servers.reducers[id]
         if reducer["author"] == author:
             worker.addReducer( reducer )        
 

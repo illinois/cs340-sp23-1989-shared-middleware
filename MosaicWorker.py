@@ -158,7 +158,7 @@ class MosaicWorker:
         reducer["disabled"] = True
         error = reducer["error"]
 
-    if error:
+    if error or not req:
       reducer["error"] = error
       # Remove bad reducer and retry:
       self.reducersAvailable.remove(reducer)
