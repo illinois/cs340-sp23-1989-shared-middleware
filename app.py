@@ -59,7 +59,7 @@ def PUT_addMMG():
         tiles = int(request.form["tileImageCount"]),
     )
 
-    return jsonify(result), 200
+    return jsonify(result["id"]), 200
 
 
 @app.route("/registerReducer", methods=["PUT"])
@@ -78,7 +78,7 @@ def PUT_registerReducer():
         author = request.form["author"],
     )
 
-    return jsonify(result), 200
+    return jsonify(result["id"]), 200
 
 
 @app.route("/makeMosaic", methods=["POST"])
