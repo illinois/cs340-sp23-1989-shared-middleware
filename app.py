@@ -172,7 +172,7 @@ def isAdmin():
 
 @app.route("/singleAuthor", methods=["GET"])
 def GET_singleAuthor():
-    if servers.isAfterDeadline and not isAdmin():
+    if not isAdmin():
         return render_template("disabled.html")
 
     author = request.args.get("author")
@@ -206,9 +206,9 @@ def GET_toggleLate():
     return jsonify({"result": servers.toggleAfterDeadline()})
 
 @app.route("/clearErrors", methods=["GET"])
-def GET_toggleLate():
+def GET_clearErrors():
     if not isAdmin(): return jsonify({"error": "Requires Admin"})
-    return jsonify({"result": servers.toggleAfterDeadline()})
+    return jsonify({"result": servers.clearErrors()})
 
 
 
