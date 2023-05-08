@@ -28,12 +28,13 @@ class ServersCollection:
   
   def clearErrors(self):
     for id in self.mmgs:
-      self.updateValue("disabled", False)
-      self.updateValue("error", "")
+      server = self.mmgs[id]
+      self.updateValue(server, "disabled", False)
+      self.updateValue(server, "error", "")
 
     for id in self.reducers:
-      self.updateValue("disabled", False)
-      self.updateValue("error", "")
+      self.updateValue(server, "disabled", False)
+      self.updateValue(server, "error", "")
 
     return "Errors reset"
 
