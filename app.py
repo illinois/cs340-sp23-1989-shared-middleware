@@ -259,11 +259,17 @@ async def GET_testMosaic():
 
     for id in servers.mmgs:
         mmg = servers.mmgs[id]
+        if "disabled" in mmg:
+            continue
+
         if mmg["author"] == author:
             worker.addMMG( mmg )    
 
     for id in servers.reducers:
         reducer = servers.reducers[id]
+        if "disabled" in reducer:
+            continue
+
         if reducer["author"] == author:
             worker.addReducer( reducer )        
 
