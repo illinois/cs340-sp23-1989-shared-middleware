@@ -205,6 +205,12 @@ def GET_toggleLate():
     if not isAdmin(): return jsonify({"error": "Requires Admin"})
     return jsonify({"result": servers.toggleAfterDeadline()})
 
+@app.route("/clearErrors", methods=["GET"])
+def GET_toggleLate():
+    if not isAdmin(): return jsonify({"error": "Requires Admin"})
+    return jsonify({"result": servers.toggleAfterDeadline()})
+
+
 
 @app.route("/admin", methods=["GET"])
 def GET_admin():

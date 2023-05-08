@@ -25,6 +25,18 @@ class ServersCollection:
   def toggleAfterDeadline(self):
     self.isAfterDeadline = not self.isAfterDeadline
     return self.isAfterDeadline
+  
+  def clearErrors(self):
+    for id in self.mmgs:
+      self.updateValue("disabled", False)
+      self.updateValue("error", "")
+
+    for id in self.reducers:
+      self.updateValue("disabled", False)
+      self.updateValue("error", "")
+
+    return "Errors reset"
+
 
   def addMMG(self, name, url, author, tiles):
     id = secrets.token_hex(20)
