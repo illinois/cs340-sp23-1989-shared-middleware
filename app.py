@@ -113,8 +113,10 @@ async def POST_makeMosaic():
             if filterQuery and filterQuery not in mmg["name"]:
                 continue
 
-            if "disabled" not in mmg:
-                worker.addMMG( mmg )
+            if "disabled" in mmg and mmg["disabled"]:
+                continue
+
+            worker.addMMG( mmg )
         
 
         # Reducers and Verification
@@ -123,11 +125,14 @@ async def POST_makeMosaic():
             verifiedOnly = True
 
         for id in servers.reducers:
-            if verifiedOnly and servers.reducers[id]["verification"] != "GOOD":
+            reducer = servers.reducers[id]
+            if verifiedOnly and reducer["verification"] != "GOOD":
                 continue
 
-            if "disabled" not in servers.reducers[id]:
-                worker.addReducer( servers.reducers[id] )
+            if "disabled" in reducer and reducer["disabled"]:
+                continue
+
+            worker.addReducer( reducer )
 
         result = worker.createMosaic()
         return jsonify(result)
@@ -265,7 +270,7 @@ async def GET_testMosaic():
 
     for id in servers.mmgs:
         mmg = servers.mmgs[id]
-        if "disabled" in mmg:
+        if "disabled" in mmg and mmg["disabled"]:
             continue
 
         if mmg["author"] == author:
@@ -273,7 +278,7 @@ async def GET_testMosaic():
 
     for id in servers.reducers:
         reducer = servers.reducers[id]
-        if "disabled" in reducer:
+        if "disabled" in reducer and reducer["disabled"]:
             continue
 
         if reducer["author"] == author:
