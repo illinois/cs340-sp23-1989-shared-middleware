@@ -73,9 +73,9 @@
           </th>
         </tr>
         {% for server in data[author] %}
-        <tr class="server-details {% if "disabled" in server %}table-danger{% endif %}">
+        <tr class="server-details {% if "disabled" in server and server["disabled"] %}table-danger{% endif %}">
           <td>
-            {% if "disabled" in server %}❌{% endif %}
+            {% if "disabled" in server and server["disabled"] %}❌{% endif %}
             {% if server["type"] == "reducer" %}
             <b>Mosaic Reducer</b>
               {% if "verification" in server %}
