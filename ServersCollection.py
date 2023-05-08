@@ -33,7 +33,7 @@ class ServersCollection:
       self.updateValue(server, "error", "")
 
     for id in self.reducers:
-      server = self.mmgs[id]
+      server = self.reducers[id]
       self.updateValue(server, "disabled", False)
       self.updateValue(server, "error", "")
 
