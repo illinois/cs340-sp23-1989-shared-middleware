@@ -247,7 +247,7 @@ with open("testFiles/D.png", "rb") as f:
 
 @app.route("/testMosaic", methods=["GET"])
 async def GET_testMosaic():
-    if servers.isAfterDeadline and not isAdmin():
+    if not isAdmin():
         return jsonify({"error": "Requires admin access."}), 400
 
     author = request.args.get("author")
