@@ -55,7 +55,7 @@ socket.on("connect", () => {
         + e.innerHTML;
     } else {
       let e = document.getElementById("output");
-      e.innerHTML = "Rendering Complete";
+      e.innerHTML += "Rendering Complete";
     }
   });
 })
