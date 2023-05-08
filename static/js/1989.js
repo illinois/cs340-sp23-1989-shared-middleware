@@ -1,10 +1,12 @@
 var socket;
 socket = io();
-socket.on('progress update', function (progress) {
-  progbar = document.getElementById("progbar");
-  progbar.style.width = String(Math.round(Number(progress * 100))) + '%';
-  progbar.setAttribute('aria-valuenow', Math.round(Number(progress * 100)));
-  progbar.textContent = String(Math.round(Number(progress * 100))) + '%';
+socket.on('progress update', function (d) {
+  let pct = (d.current / d.total) * 100;
+
+  e = document.getElementById("progbar");
+  e.style.width = `${Math.round(pct)}%`
+  e.setAttribute('aria-valuenow', Math.round(pct));
+  e.textContent = `${d.current} of ${d.total} -- ${Math.round(pct)}%`
 });
 
 socket.on('mosaic', function (mosaicInfo) {
@@ -45,12 +47,18 @@ let doSubmit = function () {
   let tilesAcross = document.getElementById("tilesAcross").value;
   let renderedTileSize = document.getElementById("renderedTileSize").value;
   let fileFormat = document.getElementById("fileFormat").value;
+  let filter = document.getElementById("filter").value;
+  let verifiedOnly = document.getElementById("verified").checked;
 
   var data = new FormData();
   data.append("image", f);
   data.append("tilesAcross", tilesAcross);
   data.append("renderedTileSize", renderedTileSize);
   data.append("fileFormat", fileFormat);
+  data.append("filter", filter);
+  if (verifiedOnly) {
+    data.append("verified", "true");
+  }
 
   fetch("/makeMosaic", {
     method: "POST",

@@ -89,6 +89,9 @@
             {% else %}
             <b>MMG:</b> {{ server["name"] }}
             {% endif %}
+            {% if "late" in server and server["late"] %}
+            - <span style="background-color: #ffeeee; color: red;">Late ({{ server["late"] }})</span>
+            {% endif %}            
           </td>
           <td>{{ server["url"] }}</td>
           <td>{{ server["author"] }}</td>

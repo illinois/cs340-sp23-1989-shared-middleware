@@ -2,9 +2,11 @@
 
 import secrets
 import pymongo
+from datetime import datetime
 
 class ServersCollection:
   def __init__(self, usingMongo):
+    self.isAfterDeadline = False
     self.usingMongo = usingMongo
     self.mmgs = {}
     self.reducers = {}
@@ -20,17 +22,25 @@ class ServersCollection:
       for reducer in self.collection_reducers.find({}):
         self.reducers[reducer["id"]] = reducer
 
+  def toggleAfterDeadline(self):
+    self.isAfterDeadline = not self.isAfterDeadline
+    return self.isAfterDeadline
 
   def addMMG(self, name, url, author, tiles):
     id = secrets.token_hex(20)
     count = 0
     isUpdate = False
+    late = False
+    if self.isAfterDeadline:
+      now = datetime.now()
+      late = now.strftime("%H:%M:%S")
     
     # Check for existing MMG with same URL:
     for existingId in self.mmgs:
       if self.mmgs[existingId]["url"] == url:
         id = existingId
         count = self.mmgs[existingId]["count"]
+        late = self.mmgs[existingId]["late"]
         isUpdate = True
         break
 
@@ -42,6 +52,7 @@ class ServersCollection:
       "author": author,
       "tiles": tiles,
       "count": count,
+      "late": late,
     }
 
     self.mmgs[id] = mmg
@@ -60,6 +71,10 @@ class ServersCollection:
     count = 0
     isUpdate = False
     verification = None
+    late = False
+    if self.isAfterDeadline:
+      now = datetime.now()
+      late = now.strftime("%H:%M:%S")
 
     for existingId in self.reducers:
       if self.reducers[existingId]["url"] == url:
@@ -67,6 +82,7 @@ class ServersCollection:
         count = self.reducers[existingId]["count"]
         isUpdate = True
         verification = self.reducers[existingId]["verification"]
+        late = self.reducers[existingId]["late"]
         break
 
     reducer = self.reducers[id] = {
@@ -76,6 +92,7 @@ class ServersCollection:
       "author": author,
       "count": count,
       "verification": verification,
+      "late": late,
     }
 
     if self.usingMongo:

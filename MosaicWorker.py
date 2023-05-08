@@ -1,11 +1,10 @@
-from concurrent.futures import ThreadPoolExecutor
 import requests
 import random
 import concurrent
 import queue
 
 class MosaicWorker:
-  def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio, servers, socketio_filter = ""):
+  def __init__(self, baseImage, tilesAcross, renderedTileSize, fileFormat, socketio, servers, threadPool, socketio_filter = ""):
     self.baseImage = baseImage
     self.tilesAcross = tilesAcross
     self.renderedTileSize = renderedTileSize
@@ -28,7 +27,7 @@ class MosaicWorker:
     self.expectedMosaics = -1   # Always (2*MG - 1) mosaics w/ reductions; start with -1 and always add 2.
     self.disableReduce = False
 
-    self.threadPool = ThreadPoolExecutor(max_workers=30)
+    self.threadPool = threadPool
 
   def addMMG(self, mmg):
     self.mmgsAvailable.append(mmg)
@@ -76,10 +75,18 @@ class MosaicWorker:
     return True
 
 
+  def saveImage(self, info):
+    import time
+    import os
+
+    fileName = os.path.join("mosaics", f"{int(time.time() * 1000)}_{info['tiles']}_{info['mosaics']}.{self.fileFormat.lower()}")
+    with open(fileName, "wb") as f:
+      f.write(info["mosaicImage"])
+
   def processRenderedMosaic(self, mosaicImage, description, tiles, mosaics):
     """Stores a rendered mosaic, queueing up reduction or further reduction if possible."""
     print(f"[MosaicWorker]: --> Storing mosaic result as #{self.mosaicNextID}")
-    print(f"[MosaicWorker]:     Bytes: {len(mosaicImage)}")
+
 
     mosaicInfo = {
       "image": mosaicImage,
@@ -90,14 +97,23 @@ class MosaicWorker:
     }
     self.socketio.emit("mosaic" + self.socketio_filter, mosaicInfo)
 
+    import random
+    if random.randint(1, 100) == 100:
+      self.saveImage(mosaicInfo)
+
 
     self.reductionJobs.append({
       "mosaicImage": mosaicImage,
       "id": self.mosaicNextID,
       "tiles": tiles,
-      "mosaics": mosaics,      
+      "mosaics": mosaics,
+      "description": description,
     })
-    self.socketio.emit("progress update" + self.socketio_filter, str(self.mosaicNextID / self.expectedMosaics))
+
+    self.socketio.emit("progress update" + self.socketio_filter, {
+      "current": self.mosaicNextID,
+      "total": self.expectedMosaics,
+    })
     self.mosaicNextID = self.mosaicNextID + 1
 
     if len(self.reductionJobs) >= 2 and not self.disableReduce:
@@ -111,7 +127,8 @@ class MosaicWorker:
   def sendRequest2(self, url, files):
     resp = requests.post(
       f'{url}?tilesAcross={self.tilesAcross}&renderedTileSize={self.renderedTileSize}&fileFormat={self.fileFormat}',
-      files = files
+      files = files,
+      timeout = 15,
     )
     return resp
 
@@ -134,27 +151,32 @@ class MosaicWorker:
       self.servers.updateValue(reducer, "error", f"ConnectionError: {e}")
       self.servers.updateValue(reducer, "disabled", True)
       # Remove bad reducer and retry:
-      self.reducersAvailable.remove(reducer)
+      if reducer in self.reducersAvailable:
+        self.reducersAvailable.remove(reducer)
+        
       return self.awaitReducer(mosaic1, mosaic2)
     
     if req.status_code >= 500:
       self.servers.updateValue(reducer, "error", f"HTTP Status {req.status_code}")
       self.servers.updateValue(reducer, "disabled", True)
       # Remove bad reducer and retry:
-      self.reducersAvailable.remove(reducer)
+      if reducer in self.reducersAvailable:
+        self.reducersAvailable.remove(reducer)
       return self.awaitReducer(mosaic1, mosaic2)
         
     if req.status_code != 200:
       self.servers.updateValue(reducer, "error", f"HTTP Status {req.status_code}")
       # Remove bad reducer and retry:
-      self.reducersAvailable.remove(reducer)
+      if reducer in self.reducersAvailable:
+        self.reducersAvailable.remove(reducer)
       return self.awaitReducer(mosaic1, mosaic2)
 
     mosaicImage = req.content
     if not self.validateMosaicImageSize(reducer, self.baseImage, mosaicImage):
       self.servers.updateValue(reducer, "disabled", True)
       # Remove bad reducer and retry:
-      self.reducersAvailable.remove(reducer)
+      if reducer in self.reducersAvailable:
+        self.reducersAvailable.remove(reducer)
       return self.awaitReducer(mosaic1, mosaic2)
 
     self.reducerBlockingQueue.put(reducer)
@@ -168,7 +190,8 @@ class MosaicWorker:
     )
 
     self.reducerCompleted = self.reducerCompleted + 1
-    self.servers.updateCount(reducer)
+    if self.socketio_filter == "":
+      self.servers.updateCount(reducer)
 
 
   def awaitMMG(self, mmg):
@@ -201,7 +224,8 @@ class MosaicWorker:
 
     self.processRenderedMosaic(mosaicImage, f"\"{name}\" by {author}", mmg["tiles"], 1)
     self.mmgCompleted = self.mmgCompleted + 1
-    self.servers.updateCount(mmg)
+    if self.socketio_filter == "":
+      self.servers.updateCount(mmg)
 
 
   def createMosaic(self):
@@ -222,10 +246,8 @@ class MosaicWorker:
       raise Exception("No reducers are available on this server.")
 
     concurrent.futures.wait(self.reducerTasks)
-    while len(self.reducersAvailable) > 0 and self.mosaicNextID < self.expectedMosaics:
+    while self.mosaicNextID <= self.expectedMosaics:
       concurrent.futures.wait(self.reducerTasks)
-
-    self.threadPool.shutdown()
 
     # After all MMGs and reducers, there should be one mosaic that remains to be reduced that cannot
     # be reduced with anything else.  This is the final result:
@@ -234,13 +256,11 @@ class MosaicWorker:
     #   for d in self.allRenderedMosaics:
     #     d["image"] = "data:image/png;base64," + base64.b64encode(d["image"]).decode("utf-8")
     #   return self.allRenderedMosaics
-    print(len(self.reductionJobs))
+
     if len(self.reductionJobs) == 1:
+      self.saveImage(self.reductionJobs[0])
       return []
-      # mosaicImage_buffer = self.reducerTasks[0]["mosaicImage"]
-      # mosaicImage_b64 = base64.b64encode(mosaicImage_buffer).decode("utf-8")
-      # return [{"image": "data:image/png;base64," + mosaicImage_b64}]
-  
+
     # Otherwise, we have some sort of an error:
     raise Exception("No mosaics were available after all threads completed all of the work.  (Did every MMG fail?)")
 
@@ -278,6 +298,5 @@ class MosaicWorker:
     self.reducerTasks.append(reducerFuture)
 
     concurrent.futures.wait(self.reducerTasks)
-    self.threadPool.shutdown()
 
     return []

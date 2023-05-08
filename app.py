@@ -20,6 +20,11 @@ if os.getenv("ADMIN_PASSCODE"):
 
 servers = ServersCollection(useDB)
 
+os.makedirs("mosaics", exist_ok=True)
+
+
+from concurrent.futures import ThreadPoolExecutor
+threadPool = ThreadPoolExecutor(max_workers=30)
 
 @app.route("/", methods=["GET"])
 def GET_index():
@@ -94,12 +99,33 @@ async def POST_makeMosaic():
             fileFormat = request.form["fileFormat"],
             servers = servers,
             socketio = socketio,
+            threadPool = threadPool,
         )
+
+
+        # MMGs and Filtering
+        filterQuery = request.form["filter"]
+        if filterQuery == "":
+            filterQuery = False
+
         for id in servers.mmgs:
-            if "disabled" not in servers.mmgs[id]:
-                worker.addMMG( servers.mmgs[id] )
+            mmg = servers.mmgs[id]
+            if filterQuery and filterQuery not in mmg["name"]:
+                continue
+
+            if "disabled" not in mmg:
+                worker.addMMG( mmg )
         
+
+        # Reducers and Verification
+        verifiedOnly = False
+        if "verified" in request.form:
+            verifiedOnly = True
+
         for id in servers.reducers:
+            if verifiedOnly and servers.reducers[id]["verification"] != "GOOD":
+                continue
+
             if "disabled" not in servers.reducers[id]:
                 worker.addReducer( servers.reducers[id] )
 
@@ -138,18 +164,23 @@ def GET_serverList():
     return render_template("servers.html", data=servers_by_author)
 
 
+def isAdmin():
+    if os.getenv("ADMIN_PASSCODE") and "admin" in request.cookies and request.cookies.get("admin") == os.getenv("ADMIN_PASSCODE"):
+        return True
+    else:
+        return False
+
 @app.route("/singleAuthor", methods=["GET"])
 def GET_singleAuthor():
-    author = request.args.get("author")
-    isAdmin = False
-    if os.getenv("ADMIN_PASSCODE") and "admin" in request.cookies and request.cookies.get("admin") == os.getenv("ADMIN_PASSCODE"):
-        isAdmin = True
+    if servers.isAfterDeadline and not isAdmin():
+        return render_template("disabled.html")
 
-    return render_template("singleAuthor.html", data={"author": author, "isAdmin": isAdmin})
+    author = request.args.get("author")
+    return render_template("singleAuthor.html", data={"author": author, "isAdmin": isAdmin()})
 
 
 def verify(how):
-    if os.getenv("ADMIN_PASSCODE") and ("admin" not in request.cookies or request.cookies.get("admin") != os.getenv("ADMIN_PASSCODE")):
+    if not isAdmin():
         return jsonify({"error": "This server is currently in admin-only mode. You are unable to add an image."}), 400
 
     author = request.args.get("author")
@@ -169,6 +200,10 @@ def GET_verify_GOOD():
 def GET_verify_BROKEN():
     return verify("BROKEN")
 
+@app.route("/toggleLate", methods=["GET"])
+def GET_toggleLate():
+    if not isAdmin(): return jsonify({"error": "Requires Admin"})
+    return jsonify({"result": servers.toggleAfterDeadline()})
 
 
 @app.route("/admin", methods=["GET"])
@@ -206,6 +241,9 @@ with open("testFiles/D.png", "rb") as f:
 
 @app.route("/testMosaic", methods=["GET"])
 async def GET_testMosaic():
+    if servers.isAfterDeadline and not isAdmin():
+        return jsonify({"error": "Requires admin access."}), 400
+
     author = request.args.get("author")
 
     worker = MosaicWorker(
@@ -215,6 +253,7 @@ async def GET_testMosaic():
         fileFormat = "PNG",
         socketio = socketio,
         servers = servers,
+        threadPool = threadPool,
         socketio_filter = f" {author}",
     )
 
